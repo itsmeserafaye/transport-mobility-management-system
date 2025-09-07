@@ -30,6 +30,13 @@ A comprehensive web-based system for managing transport and mobility operations 
    - Start XAMPP and ensure MySQL is running
    - Create database: `transport_mobility_db`
    - Import schema: `mysql -u root -p transport_mobility_db < database/transport_and_mobility_management.sql`
+   - **Note**: Database file may need to be downloaded separately due to size
+
+3. **Create Required Directories**
+   ```bash
+   mkdir uploads uploads/documents uploads/tickets upload
+   chmod 755 uploads upload (Linux/Mac)
+   ```
 
 3. **Configuration**
    - Database configuration is in `config/database.php`
