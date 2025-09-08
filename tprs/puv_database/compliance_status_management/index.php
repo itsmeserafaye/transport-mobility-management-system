@@ -1,5 +1,6 @@
 <?php
 require_once $_SERVER['DOCUMENT_ROOT'] . '/transport_and_mobility_management_system/config/database.php';
+require_once 'functions.php';
 
 $database = new Database();
 $conn = $database->getConnection();

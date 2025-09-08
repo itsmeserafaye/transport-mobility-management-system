@@ -301,4 +301,45 @@ function getComplianceStatistics($db) {
     
     return $stats;
 }
+
+// Get compliance status records for display
+function getComplianceStatus($db) {
+    $query = "SELECT cs.*, 
+                     o.first_name, o.last_name,
+                     CONCAT(o.first_name, ' ', o.last_name) as operator_name,
+                     v.plate_number, v.vehicle_type, v.make, v.model,
+                     fr.franchise_number, fr.route_assigned,
+                     va.last_violation_date
+              FROM compliance_status cs
+              JOIN operators o ON cs.operator_id = o.operator_id
+              JOIN vehicles v ON cs.vehicle_id = v.vehicle_id
+              LEFT JOIN franchise_records fr ON cs.operator_id = fr.operator_id
+              LEFT JOIN violation_analytics va ON cs.operator_id = va.operator_id AND cs.vehicle_id = va.vehicle_id
+              ORDER BY cs.updated_at DESC
+              LIMIT 50";
+    
+    $stmt = $db->prepare($query);
+    $stmt->execute();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Get compliance record by ID
+function getComplianceById($db, $compliance_id) {
+    $query = "SELECT cs.*, 
+                     o.first_name, o.last_name,
+                     CONCAT(o.first_name, ' ', o.last_name) as operator_name,
+                     v.plate_number, v.vehicle_type, v.make, v.model,
+                     fr.franchise_number, fr.route_assigned,
+                     va.last_violation_date
+              FROM compliance_status cs
+              JOIN operators o ON cs.operator_id = o.operator_id
+              JOIN vehicles v ON cs.vehicle_id = v.vehicle_id
+              LEFT JOIN franchise_records fr ON cs.operator_id = fr.operator_id
+              LEFT JOIN violation_analytics va ON cs.operator_id = va.operator_id AND cs.vehicle_id = va.vehicle_id
+              WHERE cs.compliance_id = ?";
+    
+    $stmt = $db->prepare($query);
+    $stmt->execute([$compliance_id]);
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}
 ?>

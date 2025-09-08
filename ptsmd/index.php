@@ -350,7 +350,7 @@ $moduleStats = getModuleStats($conn);
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">Total Violations</p>
-                            <p class="text-3xl font-bold text-red-600" id="total-violations"><?php echo number_format($kpis['unpaid_violations'] + 150); ?></p>
+                            <p class="text-3xl font-bold text-red-600" id="total-violations">Loading...</p>
                         </div>
                         <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
                             <i data-lucide="alert-triangle" class="w-6 h-6 text-red-600"></i>
@@ -362,7 +362,7 @@ $moduleStats = getModuleStats($conn);
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">Repeat Offenders</p>
-                            <p class="text-3xl font-bold text-orange-600" id="repeat-offenders"><?php echo number_format(ceil($kpis['total_operators'] * 0.15)); ?></p>
+                            <p class="text-3xl font-bold text-orange-600" id="repeat-offenders">Loading...</p>
                         </div>
                         <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
                             <i data-lucide="user-x" class="w-6 h-6 text-orange-600"></i>
@@ -374,7 +374,7 @@ $moduleStats = getModuleStats($conn);
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">Violation Hotspots</p>
-                            <p class="text-3xl font-bold text-yellow-600" id="violation-hotspots">12</p>
+                            <p class="text-3xl font-bold text-yellow-600" id="violation-hotspots">Loading...</p>
                         </div>
                         <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
                             <i data-lucide="map-pin" class="w-6 h-6 text-yellow-600"></i>
@@ -386,7 +386,7 @@ $moduleStats = getModuleStats($conn);
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">Revenue Collected</p>
-                            <p class="text-3xl font-bold text-green-600" id="revenue-collected">₱<?php echo number_format($kpis['monthly_revenue'], 2); ?></p>
+                            <p class="text-3xl font-bold text-green-600" id="revenue-collected">Loading...</p>
                         </div>
                         <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                             <i data-lucide="dollar-sign" class="w-6 h-6 text-green-600"></i>
@@ -802,8 +802,43 @@ $moduleStats = getModuleStats($conn);
                 });
         }
 
+        // Load dashboard KPI data
+        function loadDashboardKPIs() {
+            fetch('http://localhost/transport_and_mobility_management_system/dashboard_api.php')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const kpis = data.data;
+                        document.getElementById('total-violations').textContent = kpis.total_violations.toLocaleString();
+                        document.getElementById('repeat-offenders').textContent = kpis.repeat_offenders.toLocaleString();
+                        document.getElementById('violation-hotspots').textContent = kpis.violation_hotspots.toLocaleString();
+                        document.getElementById('revenue-collected').textContent = '₱' + kpis.revenue_collected.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                        
+                        // Update secondary KPIs if elements exist
+                        const monthlyRevenueEl = document.querySelector('[data-kpi="monthly-revenue"]');
+                        if (monthlyRevenueEl) {
+                            monthlyRevenueEl.textContent = '₱' + kpis.monthly_revenue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                        }
+                    } else {
+                        console.error('API Error:', data.error);
+                        document.getElementById('total-violations').textContent = 'Error';
+                        document.getElementById('repeat-offenders').textContent = 'Error';
+                        document.getElementById('violation-hotspots').textContent = 'Error';
+                        document.getElementById('revenue-collected').textContent = 'Error';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading dashboard KPIs:', error);
+                    document.getElementById('total-violations').textContent = 'Error';
+                    document.getElementById('repeat-offenders').textContent = 'Error';
+                    document.getElementById('violation-hotspots').textContent = 'Error';
+                    document.getElementById('revenue-collected').textContent = 'Error';
+                });
+        }
+
         // Initialize analytics data on page load
         document.addEventListener('DOMContentLoaded', function() {
+            loadDashboardKPIs();
             refreshHotspots();
             refreshRepeatOffenders();
             refreshEnforcementData();

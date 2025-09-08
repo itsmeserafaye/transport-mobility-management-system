@@ -1,5 +1,6 @@
 <?php
 require_once '../../../config/database.php';
+require_once 'functions.php';
 
 $database = new Database();
 $conn = $database->getConnection();
@@ -362,12 +363,8 @@ $compliance = getComplianceStatus($conn);
                                     </td>
                                     <td class="px-6 py-4">
                                         <div class="flex space-x-2">
-                                            <button class="p-1 text-blue-600 hover:bg-blue-100 rounded">
+                                            <button class="p-1 text-blue-600 hover:bg-blue-100 rounded" title="View Details">
                                                 <i data-lucide="eye" class="w-4 h-4"></i>
-                                            </button>
-
-                                            <button class="p-1 text-red-600 hover:bg-red-100 rounded">
-                                                <i data-lucide="alert-triangle" class="w-4 h-4"></i>
                                             </button>
                                         </div>
                                     </td>
@@ -407,12 +404,8 @@ $compliance = getComplianceStatus($conn);
                                     </td>
                                     <td class="px-6 py-4">
                                         <div class="flex space-x-2">
-                                            <button class="p-1 text-blue-600 hover:bg-blue-100 rounded">
+                                            <button class="p-1 text-blue-600 hover:bg-blue-100 rounded" title="View Details">
                                                 <i data-lucide="eye" class="w-4 h-4"></i>
-                                            </button>
-
-                                            <button class="p-1 text-green-600 hover:bg-green-100 rounded">
-                                                <i data-lucide="check" class="w-4 h-4"></i>
                                             </button>
                                         </div>
                                     </td>
@@ -619,13 +612,9 @@ $compliance = getComplianceStatus($conn);
                         </td>
                         <td class="px-6 py-4">
                             <div class="flex space-x-2">
-                                <button onclick="viewCompliance('${row.compliance_id}')" class="p-1 text-blue-600 hover:bg-blue-100 rounded">
+                                <button onclick="viewCompliance('${row.compliance_id}')" class="p-1 text-blue-600 hover:bg-blue-100 rounded" title="View Details">
                                     <i data-lucide="eye" class="w-4 h-4"></i>
                                 </button>
-                                <button onclick="editCompliance('${row.compliance_id}')" class="p-1 text-orange-600 hover:bg-orange-100 rounded">
-                                    <i data-lucide="edit" class="w-4 h-4"></i>
-                                </button>
-
                             </div>
                         </td>
                     </tr>

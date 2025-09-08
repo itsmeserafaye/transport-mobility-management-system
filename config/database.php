@@ -116,68 +116,7 @@ function getTotalOperators($conn) {
     return $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 }
 
-function getComplianceStatus($conn) {
-    // First, create missing compliance records
-    $create_missing = "INSERT IGNORE INTO compliance_status (compliance_id, operator_id, vehicle_id, franchise_status, inspection_status, violation_count, compliance_score)
-                       SELECT 
-                           CONCAT('CS-', YEAR(CURDATE()), '-', LPAD((SELECT COUNT(*) FROM compliance_status) + ROW_NUMBER() OVER (ORDER BY o.operator_id), 3, '0')) as compliance_id,
-                           o.operator_id,
-                           v.vehicle_id,
-                           'pending' as franchise_status,
-                           'pending' as inspection_status,
-                           0 as violation_count,
-                           75.00 as compliance_score
-                       FROM operators o
-                       JOIN vehicles v ON o.operator_id = v.operator_id
-                       LEFT JOIN compliance_status cs ON o.operator_id = cs.operator_id AND v.vehicle_id = cs.vehicle_id
-                       WHERE cs.compliance_id IS NULL";
-    $conn->exec($create_missing);
-    
-    // Update compliance scores based on current status
-    $update_scores = "UPDATE compliance_status cs
-                      LEFT JOIN franchise_records fr ON cs.operator_id = fr.operator_id AND cs.vehicle_id = fr.vehicle_id
-                      LEFT JOIN (
-                          SELECT operator_id, vehicle_id, COUNT(*) as violation_count
-                          FROM violation_history 
-                          WHERE violation_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
-                          GROUP BY operator_id, vehicle_id
-                      ) vh ON cs.operator_id = vh.operator_id AND cs.vehicle_id = vh.vehicle_id
-                      SET cs.compliance_score = (
-                          CASE 
-                              WHEN cs.franchise_status = 'valid' THEN 40
-                              WHEN cs.franchise_status = 'pending' THEN 20
-                              ELSE 0
-                          END +
-                          CASE 
-                              WHEN cs.inspection_status = 'passed' THEN 40
-                              WHEN cs.inspection_status = 'pending' THEN 20
-                              ELSE 0
-                          END +
-                          CASE 
-                              WHEN COALESCE(vh.violation_count, 0) = 0 THEN 20
-                              WHEN COALESCE(vh.violation_count, 0) <= 2 THEN 10
-                              ELSE 0
-                          END
-                      ),
-                      cs.violation_count = COALESCE(vh.violation_count, 0)";
-    $conn->exec($update_scores);
-    
-    // Now get all compliance records
-    $query = "SELECT cs.*, o.first_name, o.last_name, v.plate_number, v.vehicle_type, v.make, v.model,
-              vh.violation_count, vh.last_violation_date
-              FROM compliance_status cs
-              JOIN operators o ON cs.operator_id = o.operator_id
-              JOIN vehicles v ON cs.vehicle_id = v.vehicle_id
-              LEFT JOIN (
-                  SELECT operator_id, vehicle_id, COUNT(*) as violation_count, MAX(violation_date) as last_violation_date
-                  FROM violation_history 
-                  GROUP BY operator_id, vehicle_id
-              ) vh ON cs.operator_id = vh.operator_id AND cs.vehicle_id = vh.vehicle_id
-              ORDER BY cs.updated_at DESC";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
+// Note: getComplianceStatus function moved to compliance_status_management/functions.php
 
 function getViolationHistory($conn) {
     $query = "SELECT vh.*, o.first_name, o.last_name, v.plate_number, v.vehicle_type, v.make, v.model,
@@ -192,61 +131,7 @@ function getViolationHistory($conn) {
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-function getStatistics($conn) {
-    $stats = [];
-    
-    // Total operators
-    $query = "SELECT COUNT(*) as total FROM operators";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    $stats['total_operators'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
-    
-    // Active vehicles
-    $query = "SELECT COUNT(*) as total FROM vehicles WHERE status = 'active'";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    $stats['active_vehicles'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
-    
-    // Compliant vehicles
-    $query = "SELECT COUNT(*) as total FROM compliance_status WHERE compliance_score >= 80";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    $compliant = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
-    $stats['compliance_rate'] = $stats['active_vehicles'] > 0 ? round(($compliant / $stats['active_vehicles']) * 100) : 0;
-    
-    // Pending inspections
-    $query = "SELECT COUNT(*) as total FROM compliance_status WHERE inspection_status = 'pending' OR inspection_status = 'overdue'";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    $stats['pending_inspections'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
-    
-    // Violation statistics
-    $query = "SELECT COUNT(*) as total FROM violation_history";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    $stats['total_violations'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
-    
-    // Unpaid fines
-    $query = "SELECT SUM(fine_amount) as total FROM violation_history WHERE settlement_status IN ('unpaid', 'partial')";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    $stats['unpaid_fines'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0;
-    
-    // Repeat offenders
-    $query = "SELECT COUNT(*) as total FROM violation_analytics WHERE repeat_offender_flag = 1";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    $stats['repeat_offenders'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
-    
-    // Settlement rate
-    $query = "SELECT COUNT(*) as paid FROM violation_history WHERE settlement_status = 'paid'";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    $paid = $stmt->fetch(PDO::FETCH_ASSOC)['paid'];
-    $stats['settlement_rate'] = $stats['total_violations'] > 0 ? round(($paid / $stats['total_violations']) * 100) : 0;
-    
-    return $stats;
-}
+// Note: getStatistics function moved to compliance_status_management/functions.php
 
 // Additional utility functions for vehicle and operator records
 function addOperator($conn, $data) {
@@ -313,63 +198,9 @@ function generateVehicleId($conn) {
 }
 
 // Compliance Status Management Functions
-function updateComplianceStatus($conn, $compliance_id, $data) {
-    try {
-        $query = "UPDATE compliance_status SET franchise_status = :franchise_status, 
-                  inspection_status = :inspection_status, compliance_score = :compliance_score,
-                  next_inspection_due = :next_inspection_due WHERE compliance_id = :compliance_id";
-        $stmt = $conn->prepare($query);
-        $data['compliance_id'] = $compliance_id;
-        return $stmt->execute($data);
-    } catch (PDOException $e) {
-        error_log("Update compliance error: " . $e->getMessage());
-        return false;
-    }
-}
+// Note: updateComplianceStatus function moved to compliance_status_management/functions.php
 
-function generateComplianceReport($conn, $compliance_id) {
-    try {
-        // Get compliance data
-        $compliance = getComplianceById($conn, $compliance_id);
-        if (!$compliance) {
-            return false;
-        }
-        
-        // Generate report data (simulate report generation)
-        $report_data = [
-            'compliance_id' => $compliance_id,
-            'operator_name' => $compliance['first_name'] . ' ' . $compliance['last_name'],
-            'vehicle_info' => $compliance['plate_number'] . ' - ' . $compliance['vehicle_type'],
-            'franchise_status' => $compliance['franchise_status'],
-            'inspection_status' => $compliance['inspection_status'],
-            'compliance_score' => $compliance['compliance_score'],
-            'report_date' => date('Y-m-d H:i:s'),
-            'recommendations' => $compliance['compliance_score'] >= 90 ? 'Excellent compliance. Continue current practices.' :
-                               ($compliance['compliance_score'] >= 80 ? 'Good compliance. Minor improvements needed.' :
-                               ($compliance['compliance_score'] >= 60 ? 'Fair compliance. Attention required.' : 'Poor compliance. Immediate action required.'))
-        ];
-        
-        // Log the report generation (you can save to file or database)
-        error_log('Compliance report generated for: ' . $compliance_id . ' at ' . date('Y-m-d H:i:s'));
-        
-        return true;
-    } catch (Exception $e) {
-        error_log('Error generating compliance report: ' . $e->getMessage());
-        return false;
-    }
-}
-
-function getComplianceById($conn, $compliance_id) {
-    $query = "SELECT cs.*, o.first_name, o.last_name, v.plate_number, v.vehicle_type, v.make, v.model
-              FROM compliance_status cs
-              JOIN operators o ON cs.operator_id = o.operator_id
-              JOIN vehicles v ON cs.vehicle_id = v.vehicle_id
-              WHERE cs.compliance_id = :compliance_id";
-    $stmt = $conn->prepare($query);
-    $stmt->bindParam(':compliance_id', $compliance_id);
-    $stmt->execute();
-    return $stmt->fetch(PDO::FETCH_ASSOC);
-}
+// Note: generateComplianceReport and getComplianceById functions moved to compliance_status_management/functions.php
 
 function exportComplianceData($conn, $format) {
     $compliance_data = getComplianceStatus($conn);
