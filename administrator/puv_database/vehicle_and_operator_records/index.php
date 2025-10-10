@@ -9,13 +9,15 @@ $conn = $database->getConnection();
 $search = $_GET['search'] ?? '';
 $status_filter = $_GET['status'] ?? '';
 $vehicle_type_filter = $_GET['vehicle_type'] ?? '';
+$compliance_filter = $_GET['compliance_filter'] ?? '';
+$date_filter = $_GET['date_filter'] ?? '';
 $page = max(1, $_GET['page'] ?? 1);
 $limit = 10;
 $offset = ($page - 1) * $limit;
 
 // Get operators data with filters
-if ($search || $status_filter || $vehicle_type_filter) {
-    $operators = searchOperators($conn, $search, $status_filter, $vehicle_type_filter);
+if ($search || $status_filter || $vehicle_type_filter || $compliance_filter || $date_filter) {
+    $operators = searchOperators($conn, $search, $status_filter, $vehicle_type_filter, $compliance_filter, $date_filter);
 } else {
     $operators = getOperators($conn, $limit, $offset);
 }
@@ -35,7 +37,7 @@ $total_pages = ceil($total_operators / $limit);
     <link href="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.css" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 </head>
-<body class="bg-slate-50 dark:bg-slate-900">
+<body style="background-color: #FBFBFB;" class="dark:bg-slate-900">
     <div class="flex h-screen">
         <!-- Sidebar -->
         <div id="sidebar" class="w-64 bg-white border-r border-slate-200 dark:bg-slate-900 dark:border-slate-700 transform transition-transform duration-300 ease-in-out translate-x-0">
@@ -58,7 +60,7 @@ $total_pages = ceil($total_operators / $limit);
                 </a>
 
                 <div class="space-y-1">
-                    <button onclick="toggleDropdown('puv-database')" class="w-full flex items-center justify-between p-2 rounded-xl text-orange-600 bg-orange-50 transition-all">
+                    <button onclick="toggleDropdown('puv-database')" class="w-full flex items-center justify-between p-2 rounded-xl transition-all" style="color: #4CAF50; background-color: rgba(76, 175, 80, 0.1);">
                         <div class="flex items-center">
                             <i data-lucide="database" class="w-5 h-5 mr-3"></i>
                             <span class="text-sm font-medium">PUV Database</span>
@@ -66,7 +68,7 @@ $total_pages = ceil($total_operators / $limit);
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="puv-database-icon" style="transform: rotate(180deg);"></i>
                     </button>
                     <div id="puv-database-menu" class="ml-8 space-y-1">
-                        <a href="../../puv_database/vehicle_and_operator_records/" class="block p-2 text-sm text-orange-600 bg-orange-100 rounded-lg font-medium">Vehicle & Operator Records</a>
+                        <a href="../../puv_database/vehicle_and_operator_records/" class="block p-2 text-sm rounded-lg font-medium" style="color: #4CAF50; background-color: rgba(76, 175, 80, 0.2);">Vehicle & Operator Records</a>
                         <a href="../../puv_database/compliance_status_management/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Compliance Status Management</a>
                         <a href="../../puv_database/violation_history_integration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Violation History Integration</a>
                     </div>
@@ -132,29 +134,47 @@ $total_pages = ceil($total_operators / $limit);
                         <a href="../../parking_and_terminal_management/public_transparency/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Public Transparency</a>
                     </div>
                 </div>
+
+                <div class="space-y-1">
+                    <button onclick="toggleDropdown('user-mgmt')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                        <div class="flex items-center">
+                            <i data-lucide="users" class="w-5 h-5 mr-3"></i>
+                            <span class="text-sm font-medium">User Management</span>
+                        </div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="user-mgmt-icon"></i>
+                    </button>
+                    <div id="user-mgmt-menu" class="hidden ml-8 space-y-1">
+                        <a href="../../user_management/account_registry/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Account Registry</a>
+                        <a href="../../user_management/verification_queue/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Verification Queue</a>
+                        <a href="../../user_management/account_maintenance/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Account Maintenance</a>
+                        <a href="../../user_management/roles_and_permissions/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Roles & Permissions</a>
+                        <a href="../../user_management/audit_logs/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Audit Logs</a>
+                    </div>
+                </div>
             </nav>
         </div>
 
         <!-- Main Content -->
         <div class="flex-1 flex flex-col transition-all duration-300 ease-in-out">
             <!-- Header -->
-            <div class="bg-white border-b border-slate-200 px-6 py-4 dark:bg-slate-800 dark:border-slate-700">
+            <div class="bg-white border-b border-gray-200 px-6 py-4 dark:bg-slate-800 dark:border-slate-700">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-4">
-                        <button onclick="toggleSidebar()" class="p-2 rounded-lg text-slate-500 hover:bg-slate-200 transition-colors duration-200">
+                        <button onclick="toggleSidebar()" class="p-2 rounded-lg text-gray-500 hover:bg-gray-200 transition-colors duration-200">
                             <i data-lucide="menu" class="w-6 h-6"></i>
                         </button>
                         <div>
-                            <h1 class="text-md font-bold dark:text-white">TRANSPORT PUBLIC RECORD SYSTEM - ADMIN</h1>
-                            <span class="text-xs text-slate-500 font-bold">PUV Database > Vehicle & Operator Records</span>
+                            <h1 class="text-md font-bold dark:text-white">VEHICLE & OPERATOR RECORDS</h1>
+                            <span class="text-xs text-gray-500 font-bold">PUV Database Management</span>
                         </div>
                     </div>
                     <div class="flex-1 max-w-md mx-8">
-                        <form method="GET" class="relative">
+                        <div class="relative">
                             <i data-lucide="search" class="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500"></i>
-                            <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" placeholder="Search operators or vehicles..." 
-                                   class="w-full pl-10 pr-4 py-2 bg-slate-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-300">
-                        </form>
+                            <input type="text" id="searchInput" placeholder="Search vehicles..." 
+                                   class="w-full pl-10 pr-4 py-2 bg-slate-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-300"
+                                   onkeyup="searchVehicles()">
+                        </div>
                     </div>
                     <div class="flex items-center space-x-2">
                         <button class="p-2 rounded-xl text-slate-600 hover:bg-slate-200">
@@ -166,6 +186,7 @@ $total_pages = ceil($total_operators / $limit);
 
             <!-- Page Content -->
             <div class="flex-1 p-6 overflow-auto">
+
                 <?php if (isset($_GET['message'])): ?>
                 <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
                     <?php echo htmlspecialchars($_GET['message']); ?>
@@ -226,8 +247,8 @@ $total_pages = ceil($total_operators / $limit);
                 </div>
 
                 <!-- Compliance Legend -->
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                    <h3 class="text-sm font-semibold text-blue-800 mb-2">Compliance Status Guide</h3>
+                <div class="rounded-lg p-4 mb-6" style="background-color: rgba(74, 144, 226, 0.1); border: 1px solid rgba(74, 144, 226, 0.3);">
+                    <h3 class="text-sm font-semibold mb-2" style="color: #4A90E2;">Compliance Status Guide</h3>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                         <div class="flex items-center">
                             <div class="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
@@ -248,15 +269,11 @@ $total_pages = ceil($total_operators / $limit);
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-bold text-slate-900 dark:text-white">Vehicle & Operator Records</h2>
                     <div class="flex space-x-3">
-                        <button onclick="openAddModal()" class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 flex items-center space-x-2">
+                        <button onclick="openAddModal()" class="px-4 py-2 text-white rounded-lg flex items-center space-x-2 transition-colors" style="background-color: #4CAF50;" onmouseover="this.style.backgroundColor='#45A049'" onmouseout="this.style.backgroundColor='#4CAF50'">
                             <i data-lucide="plus" class="w-4 h-4"></i>
                             <span>Add Operator</span>
                         </button>
-                        <button onclick="openVehicleModal()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center space-x-2">
-                            <i data-lucide="car" class="w-4 h-4"></i>
-                            <span>Register Vehicle</span>
-                        </button>
-                        <button onclick="updateComplianceScores()" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center space-x-2">
+                        <button onclick="updateComplianceScores()" class="px-4 py-2 text-white rounded-lg flex items-center space-x-2 transition-colors" style="background-color: #4A90E2;" onmouseover="this.style.backgroundColor='#357ABD'" onmouseout="this.style.backgroundColor='#4A90E2'">
                             <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                             <span>Update Scores</span>
                         </button>
@@ -270,22 +287,21 @@ $total_pages = ceil($total_operators / $limit);
                                 <a href="export.php?format=csv" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Export as CSV</a>
                                 <a href="export.php?format=excel" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Export as Excel</a>
                                 <a href="export.php?format=pdf" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Export as PDF</a>
-                                <a href="export.php?format=word" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Export as Word</a>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Filters -->
-                <form method="GET" class="bg-white p-4 rounded-xl border border-slate-200 mb-6 dark:bg-slate-800 dark:border-slate-700">
-                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                        <select name="status" class="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-300">
+                <form id="filterForm" method="GET" class="bg-white p-4 rounded-xl border border-slate-200 mb-6 dark:bg-slate-800 dark:border-slate-700">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <select name="status" id="statusFilter" class="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-300">
                             <option value="">All Status</option>
                             <option value="active" <?php echo $status_filter == 'active' ? 'selected' : ''; ?>>Active</option>
                             <option value="inactive" <?php echo $status_filter == 'inactive' ? 'selected' : ''; ?>>Inactive</option>
                             <option value="suspended" <?php echo $status_filter == 'suspended' ? 'selected' : ''; ?>>Suspended</option>
                         </select>
-                        <select name="vehicle_type" class="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-300">
+                        <select name="vehicle_type" id="vehicleTypeFilter" class="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-300">
                             <option value="">All Vehicle Types</option>
                             <option value="jeepney" <?php echo $vehicle_type_filter == 'jeepney' ? 'selected' : ''; ?>>Jeepney</option>
                             <option value="bus" <?php echo $vehicle_type_filter == 'bus' ? 'selected' : ''; ?>>Bus</option>
@@ -293,18 +309,14 @@ $total_pages = ceil($total_operators / $limit);
                             <option value="taxi" <?php echo $vehicle_type_filter == 'taxi' ? 'selected' : ''; ?>>Taxi</option>
                             <option value="van" <?php echo $vehicle_type_filter == 'van' ? 'selected' : ''; ?>>Van</option>
                         </select>
-                        <select class="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-300">
-                            <option>All Compliance</option>
-                            <option>Compliant</option>
-                            <option>Non-Compliant</option>
-                            <option>Pending</option>
+                        <select name="compliance_filter" id="complianceFilter" class="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-300">
+                            <option value="">All Compliance</option>
+                            <option value="compliant" <?php echo ($_GET['compliance_filter'] ?? '') == 'compliant' ? 'selected' : ''; ?>>Compliant</option>
+                            <option value="non-compliant" <?php echo ($_GET['compliance_filter'] ?? '') == 'non-compliant' ? 'selected' : ''; ?>>Non-Compliant</option>
+                            <option value="pending" <?php echo ($_GET['compliance_filter'] ?? '') == 'pending' ? 'selected' : ''; ?>>Pending</option>
                         </select>
+                        <input type="date" name="date_filter" id="dateFilter" value="<?php echo $_GET['date_filter'] ?? ''; ?>" class="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-300">
                         <input type="hidden" name="search" value="<?php echo htmlspecialchars($search); ?>">
-                        <input type="date" class="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-300">
-                        <button type="submit" class="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 flex items-center justify-center space-x-2">
-                            <i data-lucide="filter" class="w-4 h-4"></i>
-                            <span>Apply Filters</span>
-                        </button>
                     </div>
                 </form>
 
@@ -426,18 +438,27 @@ $total_pages = ceil($total_operators / $limit);
                                 Showing <?php echo $offset + 1; ?> to <?php echo min($offset + $limit, $total_operators); ?> of <?php echo $total_operators; ?> results
                             </div>
                             <div class="flex space-x-2">
+                                <?php 
+                                $url_params = http_build_query([
+                                    'search' => $search,
+                                    'status' => $status_filter,
+                                    'vehicle_type' => $vehicle_type_filter,
+                                    'compliance_filter' => $compliance_filter,
+                                    'date_filter' => $date_filter
+                                ]);
+                                ?>
                                 <?php if ($page > 1): ?>
-                                <a href="?page=<?php echo $page - 1; ?>&search=<?php echo urlencode($search); ?>&status=<?php echo urlencode($status_filter); ?>&vehicle_type=<?php echo urlencode($vehicle_type_filter); ?>" 
+                                <a href="?page=<?php echo $page - 1; ?>&<?php echo $url_params; ?>" 
                                    class="px-3 py-1 border border-slate-300 rounded text-slate-600 hover:bg-slate-50">Previous</a>
                                 <?php endif; ?>
                                 
                                 <?php for ($i = max(1, $page - 2); $i <= min($total_pages, $page + 2); $i++): ?>
-                                <a href="?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&status=<?php echo urlencode($status_filter); ?>&vehicle_type=<?php echo urlencode($vehicle_type_filter); ?>" 
+                                <a href="?page=<?php echo $i; ?>&<?php echo $url_params; ?>" 
                                    class="px-3 py-1 <?php echo $i == $page ? 'bg-orange-500 text-white' : 'border border-slate-300 text-slate-600 hover:bg-slate-50'; ?> rounded"><?php echo $i; ?></a>
                                 <?php endfor; ?>
                                 
                                 <?php if ($page < $total_pages): ?>
-                                <a href="?page=<?php echo $page + 1; ?>&search=<?php echo urlencode($search); ?>&status=<?php echo urlencode($status_filter); ?>&vehicle_type=<?php echo urlencode($vehicle_type_filter); ?>" 
+                                <a href="?page=<?php echo $page + 1; ?>&<?php echo $url_params; ?>" 
                                    class="px-3 py-1 border border-slate-300 rounded text-slate-600 hover:bg-slate-50">Next</a>
                                 <?php endif; ?>
                             </div>
@@ -450,42 +471,97 @@ $total_pages = ceil($total_operators / $limit);
 
     <!-- Add Operator Modal -->
     <div id="addModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 w-full max-w-2xl mx-4">
+        <div class="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold">Add New Operator</h2>
                 <button onclick="closeModal('addModal')" class="text-gray-500 hover:text-gray-700">
                     <i data-lucide="x" class="w-6 h-6"></i>
                 </button>
             </div>
-            <form id="addOperatorForm" class="space-y-4">
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">First Name</label>
-                        <input type="text" name="first_name" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+            <form id="addOperatorForm" class="space-y-6">
+                <!-- Operator Information -->
+                <div class="border-b pb-4">
+                    <h3 class="text-lg font-semibold mb-3">Operator Information</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">First Name</label>
+                            <input type="text" name="first_name" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Last Name</label>
+                            <input type="text" name="last_name" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Last Name</label>
-                        <input type="text" name="last_name" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700">Address</label>
+                        <textarea name="address" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mt-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Contact Number</label>
+                            <input type="text" name="contact_number" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">License Number</label>
+                            <input type="text" name="license_number" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700">License Expiry</label>
+                        <input type="date" name="license_expiry" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
                     </div>
                 </div>
+
+                <!-- Vehicle Information -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Address</label>
-                    <textarea name="address" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"></textarea>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Contact Number</label>
-                        <input type="text" name="contact_number" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                    <h3 class="text-lg font-semibold mb-3">Vehicle Information</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Plate Number</label>
+                            <input type="text" name="plate_number" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Vehicle Type</label>
+                            <select name="vehicle_type" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                                <option value="">Select Type</option>
+                                <option value="jeepney">Jeepney</option>
+                                <option value="bus">Bus</option>
+                                <option value="tricycle">Tricycle</option>
+                                <option value="taxi">Taxi</option>
+                                <option value="van">Van</option>
+                            </select>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">License Number</label>
-                        <input type="text" name="license_number" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                    <div class="grid grid-cols-3 gap-4 mt-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Make</label>
+                            <input type="text" name="make" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Model</label>
+                            <input type="text" name="model" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Year</label>
+                            <input type="number" name="year_manufactured" min="1990" max="2025" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mt-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Engine Number</label>
+                            <input type="text" name="engine_number" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Chassis Number</label>
+                            <input type="text" name="chassis_number" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700">Seating Capacity</label>
+                        <input type="number" name="seating_capacity" min="1" max="100" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
                     </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">License Expiry</label>
-                    <input type="date" name="license_expiry" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
-                </div>
+
                 <div class="flex justify-end space-x-3">
                     <button type="button" onclick="closeModal('addModal')" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancel</button>
                     <button type="submit" class="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600">Add Operator</button>
@@ -520,22 +596,13 @@ $total_pages = ceil($total_operators / $limit);
         </div>
     </div>
 
-    <!-- Register Vehicle Modal -->
-    <div id="vehicleModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold">Register New Vehicle</h2>
-                <button onclick="closeModal('vehicleModal')" class="text-gray-500 hover:text-gray-700">
-                    <i data-lucide="x" class="w-6 h-6"></i>
-                </button>
-            </div>
-            <div id="vehicleModalContent"></div>
-        </div>
-    </div>
+
 
     <script>
         // Initialize Lucide icons
         lucide.createIcons();
+        
+
 
         function toggleDropdown(menuId) {
             const allMenus = document.querySelectorAll('[id$="-menu"]');
@@ -572,44 +639,7 @@ $total_pages = ceil($total_operators / $limit);
             document.getElementById('addModal').classList.remove('hidden');
         }
         
-        function openVehicleModal() {
-            fetch('register_vehicle_modal.php')
-                .then(response => response.text())
-                .then(html => {
-                    document.getElementById('vehicleModalContent').innerHTML = html;
-                    document.getElementById('vehicleModal').classList.remove('hidden');
-                    
-                    setTimeout(() => {
-                        const form = document.getElementById('registerVehicleForm');
-                        if (form) {
-                            form.addEventListener('submit', handleVehicleSubmit);
-                        }
-                    }, 100);
-                });
-        }
-        
-        function handleVehicleSubmit(e) {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            
-            fetch('register_vehicle_ajax.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Vehicle registered successfully!');
-                    closeModal('vehicleModal');
-                    location.reload();
-                } else {
-                    alert(data.message || 'Failed to register vehicle');
-                }
-            })
-            .catch(error => {
-                alert('Error: ' + error.message);
-            });
-        }
+
 
         function openViewModal(operatorId) {
             fetch(`view_modal.php?id=${operatorId}`)
@@ -712,17 +742,18 @@ $total_pages = ceil($total_operators / $limit);
             e.preventDefault();
             const formData = new FormData(this);
             
-            fetch('add_operator_ajax.php', {
+            fetch('add_operator_with_vehicle_ajax.php', {
                 method: 'POST',
                 body: formData
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
+                    alert('Operator and vehicle added successfully!');
                     closeModal('addModal');
                     location.reload();
                 } else {
-                    alert(data.message || 'Failed to add operator');
+                    alert(data.message || 'Failed to add operator and vehicle');
                 }
             })
             .catch(error => {
@@ -736,20 +767,35 @@ $total_pages = ceil($total_operators / $limit);
             }
         }
 
-        // Search on Enter key
-        document.querySelector('input[name="search"]').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                this.form.submit();
-            }
+        function searchVehicles() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('tbody tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        // Auto-submit filters when dropdown values change
+        document.getElementById('statusFilter').addEventListener('change', function() {
+            document.getElementById('filterForm').submit();
         });
 
-        // Auto-submit search after typing (debounced)
-        let searchTimeout;
-        document.querySelector('input[name="search"]').addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                this.form.submit();
-            }, 500);
+        document.getElementById('vehicleTypeFilter').addEventListener('change', function() {
+            document.getElementById('filterForm').submit();
+        });
+
+        document.getElementById('complianceFilter').addEventListener('change', function() {
+            document.getElementById('filterForm').submit();
+        });
+
+        document.getElementById('dateFilter').addEventListener('change', function() {
+            document.getElementById('filterForm').submit();
         });
 
         // Export menu toggle
@@ -789,26 +835,34 @@ $total_pages = ceil($total_operators / $limit);
             }
         }
         
+        // Enhanced sidebar toggle function with smooth animations
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const mainContent = document.querySelector('.flex-1.flex.flex-col');
             
+            // Add null checks for safety
+            if (!sidebar || !mainContent) {
+                console.error('Sidebar or main content element not found');
+                return;
+            }
+            
+            // Toggle sidebar visibility
             if (sidebar.classList.contains('-translate-x-full')) {
                 // Show sidebar
                 sidebar.classList.remove('-translate-x-full');
                 sidebar.classList.add('translate-x-0');
-                if (mainContent) {
-                    mainContent.style.marginLeft = '0';
-                    mainContent.style.width = 'calc(100% - 16rem)';
-                }
+                
+                // Adjust main content
+                mainContent.style.marginLeft = '0';
+                mainContent.style.width = 'calc(100% - 16rem)';
             } else {
                 // Hide sidebar
-                sidebar.classList.add('-translate-x-full');
                 sidebar.classList.remove('translate-x-0');
-                if (mainContent) {
-                    mainContent.style.marginLeft = '-16rem';
-                    mainContent.style.width = '100%';
-                }
+                sidebar.classList.add('-translate-x-full');
+                
+                // Expand main content to full width
+                mainContent.style.marginLeft = '-16rem';
+                mainContent.style.width = '100%';
             }
         }
     </script>

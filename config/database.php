@@ -76,36 +76,51 @@ function getVehiclesByOperator($conn, $operator_id) {
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-function searchOperators($conn, $search_term, $status = null, $vehicle_type = null) {
+function searchOperators($conn, $search_term, $status = null, $vehicle_type = null, $compliance_filter = null, $date_filter = null) {
     $query = "SELECT o.*, v.plate_number, v.vehicle_type, v.make, v.model, 
               cs.compliance_score, cs.franchise_status, cs.inspection_status
               FROM operators o 
               LEFT JOIN vehicles v ON o.operator_id = v.operator_id
               LEFT JOIN compliance_status cs ON o.operator_id = cs.operator_id
-              WHERE (o.first_name LIKE :search OR o.last_name LIKE :search 
+              WHERE 1=1";
+    
+    $params = [];
+    
+    if ($search_term) {
+        $query .= " AND (o.first_name LIKE :search OR o.last_name LIKE :search 
                      OR o.operator_id LIKE :search OR v.plate_number LIKE :search)";
+        $params['search'] = '%' . $search_term . '%';
+    }
     
     if ($status) {
         $query .= " AND o.status = :status";
+        $params['status'] = $status;
     }
+    
     if ($vehicle_type) {
         $query .= " AND v.vehicle_type = :vehicle_type";
+        $params['vehicle_type'] = $vehicle_type;
+    }
+    
+    if ($compliance_filter) {
+        if ($compliance_filter == 'compliant') {
+            $query .= " AND (COALESCE(cs.compliance_score, 0) >= 80 AND COALESCE(cs.franchise_status, 'valid') = 'valid' AND COALESCE(cs.inspection_status, 'passed') = 'passed')";
+        } elseif ($compliance_filter == 'non-compliant') {
+            $query .= " AND NOT (COALESCE(cs.compliance_score, 0) >= 80 AND COALESCE(cs.franchise_status, 'valid') = 'valid' AND COALESCE(cs.inspection_status, 'passed') = 'passed') AND NOT (COALESCE(cs.compliance_score, 0) >= 60 AND (COALESCE(cs.franchise_status, 'pending') = 'pending' OR COALESCE(cs.inspection_status, 'pending') = 'pending'))";
+        } elseif ($compliance_filter == 'pending') {
+            $query .= " AND (COALESCE(cs.compliance_score, 0) >= 60 AND (COALESCE(cs.franchise_status, 'pending') = 'pending' OR COALESCE(cs.inspection_status, 'pending') = 'pending'))";
+        }
+    }
+    
+    if ($date_filter) {
+        $query .= " AND DATE(o.date_registered) = :date_filter";
+        $params['date_filter'] = $date_filter;
     }
     
     $query .= " ORDER BY o.date_registered DESC";
     
     $stmt = $conn->prepare($query);
-    $search_param = '%' . $search_term . '%';
-    $stmt->bindParam(':search', $search_param);
-    
-    if ($status) {
-        $stmt->bindParam(':status', $status);
-    }
-    if ($vehicle_type) {
-        $stmt->bindParam(':vehicle_type', $vehicle_type);
-    }
-    
-    $stmt->execute();
+    $stmt->execute($params);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
@@ -867,5 +882,214 @@ function getViolationStatistics($conn) {
     return $stats;
 }
 
+// User Management Functions
+function getUsers($conn, $limit = 50, $offset = 0) {
+    $query = "SELECT u.*, ud.profile_picture, ud.address, ud.phone_number,
+              COUNT(al.log_id) as activity_count
+              FROM users u
+              LEFT JOIN user_documents ud ON u.user_id = ud.user_id
+              LEFT JOIN audit_logs al ON u.user_id = al.user_id
+              GROUP BY u.user_id
+              ORDER BY u.created_at DESC
+              LIMIT :limit OFFSET :offset";
+    $stmt = $conn->prepare($query);
+    $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function searchUsers($conn, $search = '', $role = '', $status = '', $verification_status = '') {
+    $query = "SELECT u.*, ud.profile_picture, ud.address, ud.phone_number
+              FROM users u
+              LEFT JOIN user_documents ud ON u.user_id = ud.user_id
+              WHERE 1=1";
+    
+    $params = [];
+    
+    if ($search) {
+        $query .= " AND (u.first_name LIKE :search OR u.last_name LIKE :search OR u.email LIKE :search OR u.username LIKE :search)";
+        $params['search'] = '%' . $search . '%';
+    }
+    
+    if ($role) {
+        $query .= " AND u.role = :role";
+        $params['role'] = $role;
+    }
+    
+    if ($status) {
+        $query .= " AND u.status = :status";
+        $params['status'] = $status;
+    }
+    
+    if ($verification_status) {
+        $query .= " AND u.verification_status = :verification_status";
+        $params['verification_status'] = $verification_status;
+    }
+    
+    $query .= " ORDER BY u.created_at DESC";
+    
+    $stmt = $conn->prepare($query);
+    $stmt->execute($params);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function getUserById($conn, $user_id) {
+    $query = "SELECT u.*, ud.profile_picture, ud.address, ud.phone_number, ud.id_document_path, ud.verification_documents
+              FROM users u
+              LEFT JOIN user_documents ud ON u.user_id = ud.user_id
+              WHERE u.user_id = :user_id";
+    $stmt = $conn->prepare($query);
+    $stmt->bindParam(':user_id', $user_id);
+    $stmt->execute();
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+function getUserStatistics($conn) {
+    $stats = [];
+    
+    // Total users
+    $query = "SELECT COUNT(*) as total FROM users";
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+    $stats['total_users'] = $stmt->fetchColumn();
+    
+    // Active users
+    $query = "SELECT COUNT(*) as total FROM users WHERE status = 'active'";
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+    $stats['active_users'] = $stmt->fetchColumn();
+    
+    // Pending verification
+    $query = "SELECT COUNT(*) as total FROM users WHERE verification_status = 'pending'";
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+    $stats['pending_verification'] = $stmt->fetchColumn();
+    
+    // Role breakdown
+    $query = "SELECT role, COUNT(*) as count FROM users GROUP BY role";
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+    $stats['role_breakdown'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    return $stats;
+}
+
+function updateUserStatus($conn, $user_id, $status, $updated_by) {
+    try {
+        $conn->beginTransaction();
+        
+        $query = "UPDATE users SET status = :status, updated_at = NOW() WHERE user_id = :user_id";
+        $stmt = $conn->prepare($query);
+        $stmt->execute(['status' => $status, 'user_id' => $user_id]);
+        
+        // Log the action
+        logUserAction($conn, $user_id, 'status_update', "Status changed to {$status}", $updated_by);
+        
+        $conn->commit();
+        return true;
+    } catch (Exception $e) {
+        $conn->rollback();
+        return false;
+    }
+}
+
+function updateUserVerification($conn, $user_id, $verification_status, $verified_by, $remarks = null) {
+    try {
+        $conn->beginTransaction();
+        
+        $query = "UPDATE users SET verification_status = :verification_status, verified_by = :verified_by, verified_at = NOW() WHERE user_id = :user_id";
+        $stmt = $conn->prepare($query);
+        $stmt->execute([
+            'verification_status' => $verification_status,
+            'verified_by' => $verified_by,
+            'user_id' => $user_id
+        ]);
+        
+        // Log the action
+        $action_details = "Verification status changed to {$verification_status}";
+        if ($remarks) {
+            $action_details .= ". Remarks: {$remarks}";
+        }
+        logUserAction($conn, $user_id, 'verification_update', $action_details, $verified_by);
+        
+        $conn->commit();
+        return true;
+    } catch (Exception $e) {
+        $conn->rollback();
+        return false;
+    }
+}
+
+function logUserAction($conn, $user_id, $action_type, $action_details, $performed_by) {
+    $log_id = generateLogId($conn);
+    $query = "INSERT INTO audit_logs (log_id, user_id, action_type, action_details, performed_by, timestamp) 
+              VALUES (:log_id, :user_id, :action_type, :action_details, :performed_by, NOW())";
+    $stmt = $conn->prepare($query);
+    return $stmt->execute([
+        'log_id' => $log_id,
+        'user_id' => $user_id,
+        'action_type' => $action_type,
+        'action_details' => $action_details,
+        'performed_by' => $performed_by
+    ]);
+}
+
+function generateLogId($conn) {
+    $year = date('Y');
+    $query = "SELECT COUNT(*) + 1 as next_id FROM audit_logs WHERE log_id LIKE 'LOG-{$year}-%'";
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+    $next_id = str_pad($stmt->fetch(PDO::FETCH_ASSOC)['next_id'], 4, '0', STR_PAD_LEFT);
+    return "LOG-{$year}-{$next_id}";
+}
+
+function generateUserId($conn) {
+    $year = date('Y');
+    $query = "SELECT COUNT(*) + 1 as next_id FROM users WHERE user_id LIKE 'USR-{$year}-%'";
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+    $next_id = str_pad($stmt->fetch(PDO::FETCH_ASSOC)['next_id'], 4, '0', STR_PAD_LEFT);
+    return "USR-{$year}-{$next_id}";
+}
+
+// Announcement Functions
+function getAnnouncements($conn, $limit = null) {
+    try {
+        $query = "SELECT * FROM announcements ORDER BY created_at DESC";
+        if ($limit) {
+            $query .= " LIMIT :limit";
+        }
+        
+        $stmt = $conn->prepare($query);
+        if ($limit) {
+            $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+        }
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        error_log("Error getting announcements: " . $e->getMessage());
+        return [];
+    }
+}
+
+function getPublishedAnnouncements($conn, $target_audience = 'all') {
+    try {
+        $query = "SELECT * FROM announcements 
+                 WHERE status = 'published' 
+                 AND (target_audience = :audience OR target_audience = 'all')
+                 AND (publish_date IS NULL OR publish_date <= NOW())
+                 AND (expiry_date IS NULL OR expiry_date > NOW())
+                 ORDER BY priority DESC, created_at DESC";
+        
+        $stmt = $conn->prepare($query);
+        $stmt->bindParam(':audience', $target_audience);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        error_log("Error getting published announcements: " . $e->getMessage());
+        return [];
+    }
+}
 
 ?>

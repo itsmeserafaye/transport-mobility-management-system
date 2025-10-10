@@ -180,10 +180,10 @@ function generateRevenueReport($conn, $period_start, $period_end) {
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 </head>
-<body class="bg-slate-50 dark:bg-slate-900">
+<body style="background-color: #FBFBFB;" class="dark:bg-slate-900">
     <div class="flex h-screen">
         <!-- Sidebar -->
-        <div id="sidebar" class="w-64 bg-white border-r border-slate-200 dark:bg-slate-900 dark:border-slate-700 transform transition-transform duration-300 ease-in-out translate-x-0">
+        <div id="sidebar" class="w-64 bg-white border-r border-gray-200 dark:bg-slate-900 dark:border-slate-700 transform transition-transform duration-300 ease-in-out translate-x-0">
             <div class="p-6">
                 <div class="flex items-center space-x-3">
                     <img src="../../../upload/Caloocan_City.png" alt="Caloocan City Logo" class="w-10 h-10 rounded-xl">
@@ -193,7 +193,7 @@ function generateRevenueReport($conn, $period_start, $period_end) {
                     </div>
                 </div>
             </div>
-            <hr class="border-slate-200 dark:border-slate-700 mx-2">
+            <hr class="border-gray-200 dark:border-slate-700 mx-2">
             
             <!-- Navigation -->
             <nav class="p-4 space-y-2">
@@ -234,7 +234,7 @@ function generateRevenueReport($conn, $period_start, $period_end) {
                 </div>
 
                 <div class="space-y-1">
-                    <button onclick="toggleDropdown('violation-ticketing')" class="w-full flex items-center justify-between p-2 rounded-xl text-orange-600 bg-orange-50 transition-all">
+                    <button onclick="toggleDropdown('violation-ticketing')" class="w-full flex items-center justify-between p-2 rounded-xl transition-all" style="color: #4CAF50; background-color: rgba(76, 175, 80, 0.1);">
                         <div class="flex items-center">
                             <i data-lucide="alert-triangle" class="w-5 h-5 mr-3"></i>
                             <span class="text-sm font-medium">Traffic Violation Ticketing</span>
@@ -244,7 +244,7 @@ function generateRevenueReport($conn, $period_start, $period_end) {
                     <div id="violation-ticketing-menu" class="ml-8 space-y-1">
                         <a href="../../traffic_violation_ticketing/violation_record_management/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Violation Record Management</a>
                         <a href="../../traffic_violation_ticketing/linking_and_analytics/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">TVT Analytics</a>
-                        <a href="../../traffic_violation_ticketing/revenue_integration/" class="block p-2 text-sm text-orange-600 bg-orange-100 rounded-lg font-medium">Revenue Integration</a>
+                        <a href="../../traffic_violation_ticketing/revenue_integration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Revenue Integration</a>
                     </div>
                 </div>
 
@@ -275,6 +275,23 @@ function generateRevenueReport($conn, $period_start, $period_end) {
                         <a href="../../parking_and_terminal_management/terminal_assignment_management/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Terminal Assignment</a>
                         <a href="../../parking_and_terminal_management/roster_and_delivery/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Roster & Directory</a>
                         <a href="../../parking_and_terminal_management/public_transparency/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Public Transparency</a>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <button onclick="toggleDropdown('user-mgmt')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                        <div class="flex items-center">
+                            <i data-lucide="users" class="w-5 h-5 mr-3"></i>
+                            <span class="text-sm font-medium">User Management</span>
+                        </div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="user-mgmt-icon"></i>
+                    </button>
+                    <div id="user-mgmt-menu" class="hidden ml-8 space-y-1">
+                        <a href="../../user_management/account_registry/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Account Registry</a>
+                        <a href="../../user_management/verification_queue/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Verification Queue</a>
+                        <a href="../../user_management/account_maintenance/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Account Maintenance</a>
+                        <a href="../../user_management/roles_and_permissions/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Roles & Permissions</a>
+                        <a href="../../user_management/audit_logs/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Audit Logs</a>
                     </div>
                 </div>
             </nav>
@@ -357,12 +374,10 @@ function generateRevenueReport($conn, $period_start, $period_end) {
                 <!-- Monthly Collections Chart -->
                 <div class="bg-white rounded-xl border border-slate-200 p-6 mb-6">
                     <h3 class="text-lg font-semibold mb-4">Monthly Collections</h3>
-                    <div id="monthlyChart" class="h-64 flex items-end space-x-2">
-                        <div class="flex items-center justify-center w-full h-full text-slate-500">
-                            <div class="text-center">
-                                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-2"></div>
-                                <p>Loading chart data...</p>
-                            </div>
+                    <div id="monthlyChart" class="h-64 flex items-center justify-center">
+                        <div class="text-center text-slate-500">
+                            <i data-lucide="bar-chart" class="w-12 h-12 mx-auto mb-2"></i>
+                            <p>Chart data will be available when API is configured</p>
                         </div>
                     </div>
                 </div>
@@ -479,109 +494,25 @@ function generateRevenueReport($conn, $period_start, $period_end) {
             }
         }
 
-        // Load monthly collections chart data
-        async function loadMonthlyChart() {
-            try {
-                console.log('Attempting to fetch data from API...');
-                const response = await fetch('?action=get_chart_data', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: 'action=get_chart_data'
-                });
-                
-                console.log('Response status:', response.status);
-                console.log('Response ok:', response.ok);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const result = await response.json();
-                console.log('API Response:', result);
-                
-                if (result.success && result.data) {
-                    renderMonthlyChart(result.data);
-                } else {
-                    console.log('API response structure:', result);
-                    showChartError('Failed to load chart data - Invalid response structure');
-                }
-            } catch (error) {
-                console.error('Error loading chart data:', error);
-                showChartError('Error loading chart data: ' + error.message);
-            }
-        }
 
-        function renderMonthlyChart(data) {
-            const chartContainer = document.getElementById('monthlyChart');
-            console.log('Chart container found:', chartContainer);
-            console.log('Chart data received:', data);
-            
-            if (!chartContainer) {
-                console.error('Chart container not found!');
-                return;
-            }
-            
-            if (!data || data.length === 0) {
-                chartContainer.innerHTML = '<div class="flex items-center justify-center w-full h-full text-slate-500"><p>No data available</p></div>';
-                return;
-            }
-            
-            // Find max value for scaling
-            const maxValue = Math.max(...data.map(item => parseFloat(item.total_revenue || 0)));
-            const scaleFactor = maxValue > 0 ? maxValue : 1;
-            
-            // Generate chart bars
-            let chartHTML = '';
-            data.forEach(item => {
-                const amount = parseFloat(item.total_revenue || 0);
-                const height = maxValue > 0 ? Math.max(5, (amount / scaleFactor) * 100) : 5;
-                const monthName = item.period_name || 'Unknown';
-                
-                chartHTML += `
-                    <div class="flex-1 bg-orange-200 rounded-t flex flex-col justify-end" style="height: ${height}%;">
-                        <div class="text-xs text-center p-1 text-orange-800">₱${amount.toLocaleString()}</div>
-                        <div class="text-xs text-center p-1 bg-orange-600 text-white rounded-t">${monthName}</div>
-                    </div>
-                `;
-            });
-            
-            chartContainer.innerHTML = chartHTML;
-        }
 
-        function showChartError(message) {
-            const chartContainer = document.getElementById('monthlyChart');
-            chartContainer.innerHTML = `
-                <div class="flex items-center justify-center w-full h-full text-red-500">
-                    <div class="text-center">
-                        <i data-lucide="alert-circle" class="w-8 h-8 mx-auto mb-2"></i>
-                        <p>${message}</p>
-                    </div>
-                </div>
-            `;
-        }
-
-        // Load chart data when page loads
+        // Show Traffic Violation menu and highlight current page
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, starting chart load...');
-            loadMonthlyChart();
+            const violationMenu = document.getElementById('violation-ticketing-menu');
+            const violationIcon = document.getElementById('violation-ticketing-icon');
+            if (violationMenu && violationIcon) {
+                violationMenu.classList.remove('hidden');
+                violationIcon.style.transform = 'rotate(180deg)';
+                
+                // Highlight current page
+                const currentLink = violationMenu.querySelector('a[href*="revenue_integration"]');
+                if (currentLink) {
+                    currentLink.style.color = '#4CAF50';
+                    currentLink.style.backgroundColor = 'rgba(76, 175, 80, 0.2)';
+                    currentLink.classList.add('font-medium');
+                }
+            }
         });
-        
-        // Test API connectivity
-        function testAPI() {
-            fetch('http://localhost:3001/api/traffic-violation/revenue?period=month')
-                .then(response => {
-                    console.log('Test API response status:', response.status);
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Test API data:', data);
-                })
-                .catch(error => {
-                    console.error('Test API error:', error);
-                });
-        }
 
     </script>
 </body>

@@ -145,33 +145,42 @@ $moduleStats = getModuleStats($conn);
     <title>Administrator Dashboard - Transport Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        .card-hover {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+    </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/dark-mode.css">
 </head>
-<body class="bg-slate-50 dark:bg-slate-900">
+<body style="background-color: #FBFBFB;" class="dark:bg-slate-900">
     <div class="flex h-screen">
         <!-- Sidebar -->
-        <div id="sidebar" class="w-64 bg-white border-r border-slate-200 dark:bg-slate-900 dark:border-slate-700 transform transition-transform duration-300 ease-in-out translate-x-0">
+        <div id="sidebar" class="w-64 bg-white border-r border-gray-200 dark:bg-slate-900 dark:border-slate-700 transform transition-transform duration-300 ease-in-out translate-x-0">
             <div class="p-6">
                 <div class="flex items-center space-x-3">
-                    <img src="../upload/Caloocan_City.png" alt="Caloocan City Logo" class="w-10 h-10 rounded-xl">
+                    <img src="../upload/Caloocan_City.png?v=<?php echo time(); ?>" alt="Caloocan City Logo" class="w-10 h-10 rounded-xl">
                     <div>
                         <h1 class="text-xl font-bold dark:text-white">TMM</h1>
                         <p class="text-xs text-slate-500">Admin Dashboard</p>
                     </div>
                 </div>
             </div>
-            <hr class="border-slate-200 dark:border-slate-700 mx-2">
+            <hr class="border-gray-200 dark:border-slate-700 mx-2">
             
             <!-- Navigation -->
             <nav class="p-4 space-y-2">
-                <a href="#" class="w-full flex items-center p-2 rounded-xl text-orange-600 bg-orange-50 transition-all">
+                <a href="#" class="w-full flex items-center p-2 rounded-xl" style="color: #4CAF50; background-color: rgba(76, 175, 80, 0.1);">
                     <i data-lucide="home" class="w-5 h-5 mr-3"></i>
                     <span class="text-sm font-medium">Dashboard</span>
                 </a>
 
                 <div class="space-y-1">
-                    <button onclick="toggleDropdown('puv-database')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                    <button onclick="toggleDropdown('puv-database')" class="w-full flex items-center justify-between p-2 rounded-xl text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all">
                         <div class="flex items-center">
                             <i data-lucide="database" class="w-5 h-5 mr-3"></i>
                             <span class="text-sm font-medium">PUV Database</span>
@@ -179,14 +188,14 @@ $moduleStats = getModuleStats($conn);
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="puv-database-icon"></i>
                     </button>
                     <div id="puv-database-menu" class="hidden ml-8 space-y-1">
-                        <a href="puv_database/vehicle_and_operator_records/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Vehicle & Operator Records</a>
-                        <a href="puv_database/compliance_status_management/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Compliance Status Management</a>
-                        <a href="puv_database/violation_history_integration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Violation History Integration</a>
+                        <a href="puv_database/vehicle_and_operator_records/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Vehicle & Operator Records</a>
+                        <a href="puv_database/compliance_status_management/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Compliance Status Management</a>
+                        <a href="puv_database/violation_history_integration/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Violation History Integration</a>
                     </div>
                 </div>
 
                 <div class="space-y-1">
-                    <button onclick="toggleDropdown('franchise-mgmt')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                    <button onclick="toggleDropdown('franchise-mgmt')" class="w-full flex items-center justify-between p-2 rounded-xl text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all">
                         <div class="flex items-center">
                             <i data-lucide="file-text" class="w-5 h-5 mr-3"></i>
                             <span class="text-sm font-medium">Franchise Management</span>
@@ -194,15 +203,15 @@ $moduleStats = getModuleStats($conn);
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="franchise-mgmt-icon"></i>
                     </button>
                     <div id="franchise-mgmt-menu" class="hidden ml-8 space-y-1">
-                        <a href="franchise_management/franchise_application_workflow/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Application & Workflow</a>
-                        <a href="franchise_management/document_repository/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Document Repository</a>
-                        <a href="franchise_management/franchise_lifecycle_management/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Lifecycle Management</a>
-                        <a href="franchise_management/route_and_schedule_publication/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Route & Schedule Publication</a>
+                        <a href="franchise_management/franchise_application_workflow/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Application & Workflow</a>
+                        <a href="franchise_management/document_repository/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Document Repository</a>
+                        <a href="franchise_management/franchise_lifecycle_management/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Lifecycle Management</a>
+                        <a href="franchise_management/route_and_schedule_publication/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Route & Schedule Publication</a>
                     </div>
                 </div>
 
                 <div class="space-y-1">
-                    <button onclick="toggleDropdown('violation-ticketing')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                    <button onclick="toggleDropdown('violation-ticketing')" class="w-full flex items-center justify-between p-2 rounded-xl text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all">
                         <div class="flex items-center">
                             <i data-lucide="alert-triangle" class="w-5 h-5 mr-3"></i>
                             <span class="text-sm font-medium">Traffic Violation Ticketing</span>
@@ -210,14 +219,14 @@ $moduleStats = getModuleStats($conn);
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="violation-ticketing-icon"></i>
                     </button>
                     <div id="violation-ticketing-menu" class="hidden ml-8 space-y-1">
-                        <a href="traffic_violation_ticketing/violation_record_management/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Violation Record Management</a>
-                        <a href="traffic_violation_ticketing/linking_and_analytics/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">TVT Analytics</a>
-                        <a href="traffic_violation_ticketing/revenue_integration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Revenue Integration</a>
+                        <a href="traffic_violation_ticketing/violation_record_management/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Violation Record Management</a>
+                        <a href="traffic_violation_ticketing/linking_and_analytics/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">TVT Analytics</a>
+                        <a href="traffic_violation_ticketing/revenue_integration/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Revenue Integration</a>
                     </div>
                 </div>
 
                 <div class="space-y-1">
-                    <button onclick="toggleDropdown('vehicle-inspection')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                    <button onclick="toggleDropdown('vehicle-inspection')" class="w-full flex items-center justify-between p-2 rounded-xl text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all">
                         <div class="flex items-center">
                             <i data-lucide="clipboard-check" class="w-5 h-5 mr-3"></i>
                             <span class="text-sm font-medium">Vehicle Inspection</span>
@@ -225,14 +234,14 @@ $moduleStats = getModuleStats($conn);
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="vehicle-inspection-icon"></i>
                     </button>
                     <div id="vehicle-inspection-menu" class="hidden ml-8 space-y-1">
-                        <a href="vehicle_inspection_and_registration/inspection_scheduling/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Inspection Scheduling</a>
-                        <a href="vehicle_inspection_and_registration/inspection_result_recording/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Result Recording</a>
-                        <a href="vehicle_inspection_and_registration/inspection_history_tracking/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">History Tracking</a>
+                        <a href="vehicle_inspection_and_registration/inspection_scheduling/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Inspection Scheduling</a>
+                        <a href="vehicle_inspection_and_registration/inspection_result_recording/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Result Recording</a>
+                        <a href="vehicle_inspection_and_registration/inspection_history_tracking/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">History Tracking</a>
                     </div>
                 </div>
 
                 <div class="space-y-1">
-                    <button onclick="toggleDropdown('terminal-mgmt')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                    <button onclick="toggleDropdown('terminal-mgmt')" class="w-full flex items-center justify-between p-2 rounded-xl text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all">
                         <div class="flex items-center">
                             <i data-lucide="map-pin" class="w-5 h-5 mr-3"></i>
                             <span class="text-sm font-medium">Terminal Management</span>
@@ -240,9 +249,26 @@ $moduleStats = getModuleStats($conn);
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="terminal-mgmt-icon"></i>
                     </button>
                     <div id="terminal-mgmt-menu" class="hidden ml-8 space-y-1">
-                        <a href="parking_and_terminal_management/terminal_assignment_management/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Terminal Assignment</a>
-                        <a href="parking_and_terminal_management/roster_and_delivery/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Roster & Directory</a>
-                        <a href="parking_and_terminal_management/public_transparency/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Public Transparency</a>
+                        <a href="parking_and_terminal_management/terminal_assignment_management/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Terminal Assignment</a>
+                        <a href="parking_and_terminal_management/roster_and_delivery/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Roster & Directory</a>
+                        <a href="parking_and_terminal_management/public_transparency/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Public Transparency</a>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <button onclick="toggleDropdown('user-mgmt')" class="w-full flex items-center justify-between p-2 rounded-xl text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all">
+                        <div class="flex items-center">
+                            <i data-lucide="users" class="w-5 h-5 mr-3"></i>
+                            <span class="text-sm font-medium">User Management</span>
+                        </div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="user-mgmt-icon"></i>
+                    </button>
+                    <div id="user-mgmt-menu" class="hidden ml-8 space-y-1">
+                        <a href="user_management/account_registry/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Account Registry</a>
+                        <a href="user_management/verification_queue/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Verification Queue</a>
+                        <a href="user_management/account_maintenance/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Account Maintenance</a>
+                        <a href="user_management/roles_and_permissions/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Roles & Permissions</a>
+                        <a href="user_management/audit_logs/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Audit Logs</a>
                     </div>
                 </div>
             </nav>
@@ -251,19 +277,19 @@ $moduleStats = getModuleStats($conn);
         <!-- Main Content -->
         <div class="flex-1 flex flex-col transition-all duration-300 ease-in-out">
             <!-- Header -->
-            <div class="bg-white border-b border-slate-200 px-6 py-4 dark:bg-slate-800 dark:border-slate-700">
+            <div class="bg-white border-b border-gray-200 px-6 py-4 dark:bg-slate-800 dark:border-slate-700">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-4">
-                        <button onclick="toggleSidebar()" class="p-2 rounded-lg text-slate-500 hover:bg-slate-200 transition-colors duration-200">
+                        <button onclick="toggleSidebar()" class="p-2 rounded-lg text-gray-500 hover:bg-gray-200 transition-colors duration-200">
                             <i data-lucide="menu" class="w-6 h-6"></i>
                         </button>
                         <div>
                             <h1 class="text-md font-bold dark:text-white">ADMINISTRATOR DASHBOARD</h1>
-                            <span class="text-xs text-slate-500 font-bold">Transport & Mobility Management System</span>
+                            <span class="text-xs text-gray-500 font-bold">Transport & Mobility Management System</span>
                         </div>
                     </div>
                     <div class="flex items-center space-x-2">
-                        <button class="p-2 rounded-xl text-slate-600 hover:bg-slate-200">
+                        <button class="p-2 rounded-xl text-gray-600 hover:bg-gray-200">
                             <i data-lucide="bell" class="w-6 h-6"></i>
                         </button>
                         <button id="darkModeToggle" class="dark-mode-toggle" title="Toggle Dark Mode">
@@ -274,17 +300,17 @@ $moduleStats = getModuleStats($conn);
             </div>
 
         <!-- Dashboard Content -->
-        <main class="p-6 bg-slate-50 dark:bg-slate-900 flex-1 overflow-y-auto">
+        <main class="p-6 flex-1 overflow-y-auto" style="background-color: #FBFBFB;">
             <!-- KPI Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <div class="bg-white rounded-lg shadow-md p-6 card-hover">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">Total Operators</p>
-                            <p class="text-3xl font-bold text-blue-600"><?php echo number_format($kpis['total_operators']); ?></p>
+                            <p class="text-3xl font-bold" style="color: #4A90E2;"><?php echo number_format($kpis['total_operators']); ?></p>
                         </div>
-                        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <i data-lucide="users" class="w-6 h-6 text-blue-600"></i>
+                        <div class="w-12 h-12 rounded-lg flex items-center justify-center" style="background-color: rgba(74, 144, 226, 0.1);">
+                            <i data-lucide="users" class="w-6 h-6" style="color: #4A90E2;"></i>
                         </div>
                     </div>
                 </div>
@@ -293,10 +319,10 @@ $moduleStats = getModuleStats($conn);
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">Active Vehicles</p>
-                            <p class="text-3xl font-bold text-green-600"><?php echo number_format($kpis['total_vehicles']); ?></p>
+                            <p class="text-3xl font-bold" style="color: #4CAF50;"><?php echo number_format($kpis['total_vehicles']); ?></p>
                         </div>
-                        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                            <i data-lucide="car" class="w-6 h-6 text-green-600"></i>
+                        <div class="w-12 h-12 rounded-lg flex items-center justify-center" style="background-color: rgba(76, 175, 80, 0.1);">
+                            <i data-lucide="car" class="w-6 h-6" style="color: #4CAF50;"></i>
                         </div>
                     </div>
                 </div>
@@ -305,10 +331,10 @@ $moduleStats = getModuleStats($conn);
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">Valid Franchises</p>
-                            <p class="text-3xl font-bold text-purple-600"><?php echo number_format($kpis['active_franchises']); ?></p>
+                            <p class="text-3xl font-bold" style="color: #4A90E2;"><?php echo number_format($kpis['active_franchises']); ?></p>
                         </div>
-                        <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                            <i data-lucide="award" class="w-6 h-6 text-purple-600"></i>
+                        <div class="w-12 h-12 rounded-lg flex items-center justify-center" style="background-color: rgba(74, 144, 226, 0.1);">
+                            <i data-lucide="award" class="w-6 h-6" style="color: #4A90E2;"></i>
                         </div>
                     </div>
                 </div>
@@ -317,10 +343,10 @@ $moduleStats = getModuleStats($conn);
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">Avg Compliance</p>
-                            <p class="text-3xl font-bold text-orange-600"><?php echo $kpis['avg_compliance']; ?>%</p>
+                            <p class="text-3xl font-bold" style="color: #FDA811;"><?php echo $kpis['avg_compliance']; ?>%</p>
                         </div>
-                        <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                            <i data-lucide="trending-up" class="w-6 h-6 text-orange-600"></i>
+                        <div class="w-12 h-12 rounded-lg flex items-center justify-center" style="background-color: rgba(253, 168, 17, 0.1);">
+                            <i data-lucide="trending-up" class="w-6 h-6" style="color: #FDA811;"></i>
                         </div>
                     </div>
                 </div>
@@ -332,10 +358,10 @@ $moduleStats = getModuleStats($conn);
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">Pending Applications</p>
-                            <p class="text-2xl font-bold text-yellow-600"><?php echo number_format($kpis['pending_applications']); ?></p>
+                            <p class="text-2xl font-bold" style="color: #FDA811;"><?php echo number_format($kpis['pending_applications']); ?></p>
                         </div>
-                        <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-                            <i data-lucide="clock" class="w-5 h-5 text-yellow-600"></i>
+                        <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background-color: rgba(253, 168, 17, 0.1);">
+                            <i data-lucide="clock" class="w-5 h-5" style="color: #FDA811;"></i>
                         </div>
                     </div>
                 </div>
@@ -368,10 +394,10 @@ $moduleStats = getModuleStats($conn);
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">Monthly Revenue</p>
-                            <p class="text-2xl font-bold text-green-600">₱<?php echo number_format($kpis['monthly_revenue'], 2); ?></p>
+                            <p class="text-2xl font-bold" style="color: #4CAF50;">₱<?php echo number_format($kpis['monthly_revenue'], 2); ?></p>
                         </div>
-                        <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                            <i data-lucide="dollar-sign" class="w-5 h-5 text-green-600"></i>
+                        <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background-color: rgba(76, 175, 80, 0.1);">
+                            <i data-lucide="dollar-sign" class="w-5 h-5" style="color: #4CAF50;"></i>
                         </div>
                     </div>
                 </div>
@@ -383,7 +409,7 @@ $moduleStats = getModuleStats($conn);
                 <div class="bg-white rounded-lg shadow-md p-6">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-lg font-semibold text-gray-800">PUV Database Module</h3>
-                        <i data-lucide="database" class="w-6 h-6 text-blue-600"></i>
+                        <i data-lucide="database" class="w-6 h-6" style="color: #4A90E2;"></i>
                     </div>
                     <div class="space-y-3">
                         <div class="flex justify-between items-center">
@@ -406,7 +432,7 @@ $moduleStats = getModuleStats($conn);
                 <div class="bg-white rounded-lg shadow-md p-6">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-lg font-semibold text-gray-800">Franchise Management</h3>
-                        <i data-lucide="file-text" class="w-6 h-6 text-green-600"></i>
+                        <i data-lucide="file-text" class="w-6 h-6" style="color: #4CAF50;"></i>
                     </div>
                     <div class="space-y-3">
                         <div class="flex justify-between items-center">
@@ -438,7 +464,7 @@ $moduleStats = getModuleStats($conn);
                         </div>
                         <div class="flex justify-between items-center">
                             <span class="text-sm text-gray-600">Collected Revenue</span>
-                            <span class="font-semibold text-green-600">₱<?php echo number_format($moduleStats['traffic_violations']['collected_revenue'], 2); ?></span>
+                            <span class="font-semibold" style="color: #4CAF50;">₱<?php echo number_format($moduleStats['traffic_violations']['collected_revenue'], 2); ?></span>
                         </div>
                         <div class="flex justify-between items-center">
                             <span class="text-sm text-gray-600">Pending Revenue</span>
@@ -452,7 +478,7 @@ $moduleStats = getModuleStats($conn);
                 <div class="bg-white rounded-lg shadow-md p-6">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-lg font-semibold text-gray-800">Vehicle Inspection</h3>
-                        <i data-lucide="clipboard-check" class="w-6 h-6 text-purple-600"></i>
+                        <i data-lucide="clipboard-check" class="w-6 h-6" style="color: #4A90E2;"></i>
                     </div>
                     <div class="space-y-3">
                         <div class="flex justify-between items-center">
@@ -461,7 +487,7 @@ $moduleStats = getModuleStats($conn);
                         </div>
                         <div class="flex justify-between items-center">
                             <span class="text-sm text-gray-600">Passed</span>
-                            <span class="font-semibold text-green-600"><?php echo number_format($moduleStats['vehicle_inspection']['passed']); ?></span>
+                            <span class="font-semibold" style="color: #4CAF50;"><?php echo number_format($moduleStats['vehicle_inspection']['passed']); ?></span>
                         </div>
                         <div class="flex justify-between items-center">
                             <span class="text-sm text-gray-600">Failed</span>
@@ -476,7 +502,7 @@ $moduleStats = getModuleStats($conn);
             <div class="bg-white rounded-lg shadow-md p-6 mb-8">
                 <div class="flex items-center justify-between mb-6">
                     <h3 class="text-lg font-semibold text-gray-800">Recent Activities</h3>
-                    <button class="text-blue-600 hover:text-blue-800 text-sm font-medium">View All</button>
+                    <button class="text-sm font-medium" style="color: #4A90E2;" onmouseover="this.style.color='#357ABD'" onmouseout="this.style.color='#4A90E2'">View All</button>
                 </div>
                 <div class="space-y-4">
                     <?php foreach ($activities as $activity): ?>
@@ -521,34 +547,144 @@ $moduleStats = getModuleStats($conn);
                 </div>
             </div>
 
+            <!-- Announcements Section -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-semibold text-gray-800">System Announcements</h3>
+                    <button onclick="openAnnouncementModal()" class="text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors" style="background-color: #FDA811;" onmouseover="this.style.backgroundColor='#E8970F'" onmouseout="this.style.backgroundColor='#FDA811'">
+                        <i data-lucide="plus" class="w-4 h-4 inline mr-2"></i>
+                        New Announcement
+                    </button>
+                </div>
+                <div id="announcements-container" class="space-y-4">
+                    <!-- Announcements will be loaded here -->
+                </div>
+            </div>
+
             <!-- System Status -->
             <div class="bg-white rounded-lg shadow-md p-6">
                 <h3 class="text-lg font-semibold text-gray-800 mb-6">System Status & Data Flow</h3>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div class="text-center">
-                        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                            <i data-lucide="database" class="w-8 h-8 text-green-600"></i>
+                        <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3" style="background-color: rgba(76, 175, 80, 0.1);">
+                            <i data-lucide="database" class="w-8 h-8" style="color: #4CAF50;"></i>
                         </div>
                         <h4 class="font-semibold text-gray-800">Database</h4>
-                        <p class="text-sm text-green-600">Connected</p>
+                        <p class="text-sm" style="color: #4CAF50;">Connected</p>
                     </div>
                     <div class="text-center">
-                        <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                            <i data-lucide="refresh-cw" class="w-8 h-8 text-blue-600"></i>
+                        <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3" style="background-color: rgba(74, 144, 226, 0.1);">
+                            <i data-lucide="refresh-cw" class="w-8 h-8" style="color: #4A90E2;"></i>
                         </div>
                         <h4 class="font-semibold text-gray-800">Data Sync</h4>
-                        <p class="text-sm text-blue-600">Active</p>
+                        <p class="text-sm" style="color: #4A90E2;">Active</p>
                     </div>
                     <div class="text-center">
-                        <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                            <i data-lucide="shield" class="w-8 h-8 text-purple-600"></i>
+                        <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3" style="background-color: rgba(74, 144, 226, 0.1);">
+                            <i data-lucide="shield" class="w-8 h-8" style="color: #4A90E2;"></i>
                         </div>
                         <h4 class="font-semibold text-gray-800">Security</h4>
-                        <p class="text-sm text-purple-600">Secure</p>
+                        <p class="text-sm" style="color: #4A90E2;">Secure</p>
                     </div>
                 </div>
             </div>
         </main>
+    </div>
+
+    <!-- Announcement Modal -->
+    <div id="announcementModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800" id="modalTitle">Create New Announcement</h3>
+                        <button onclick="closeAnnouncementModal()" class="text-gray-400 hover:text-gray-600">
+                            <i data-lucide="x" class="w-6 h-6"></i>
+                        </button>
+                    </div>
+                    
+                    <form id="announcementForm" enctype="multipart/form-data">
+                        <input type="hidden" id="announcementId" name="announcement_id">
+                        <input type="hidden" id="existingImage" name="existing_image">
+                        
+                        <div class="grid grid-cols-1 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Title *</label>
+                                <input type="text" id="announcementTitle" name="title" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Content *</label>
+                                <textarea id="announcementContent" name="content" required rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"></textarea>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+                                    <select id="announcementPriority" name="priority" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                                        <option value="low">Low</option>
+                                        <option value="medium" selected>Medium</option>
+                                        <option value="high">High</option>
+                                        <option value="urgent">Urgent</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Target Audience</label>
+                                    <select id="announcementAudience" name="target_audience" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                                        <option value="all" selected>All Users</option>
+                                        <option value="operators">Operators</option>
+                                        <option value="citizens">Citizens</option>
+                                        <option value="staff">Staff</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                                    <select id="announcementStatus" name="status" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                                        <option value="draft">Draft</option>
+                                        <option value="published" selected>Published</option>
+                                        <option value="archived">Archived</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Publish Date</label>
+                                    <input type="datetime-local" id="announcementPublishDate" name="publish_date" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Expiry Date (Optional)</label>
+                                <input type="datetime-local" id="announcementExpiryDate" name="expiry_date" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Announcement Image (Optional)</label>
+                                <input type="file" id="announcementImage" name="announcement_image" accept="image/*" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                                <p class="text-xs text-gray-500 mt-1">Supported formats: JPG, JPEG, PNG, GIF (Max 5MB)</p>
+                                <div id="imagePreview" class="mt-2 hidden">
+                                    <img id="previewImg" src="" alt="Preview" class="max-w-full h-32 object-cover rounded-lg">
+                                </div>
+                            </div>
+                            
+                            <input type="hidden" name="created_by" value="Administrator">
+                        </div>
+                        
+                        <div class="flex justify-end space-x-3 mt-6">
+                            <button type="button" onclick="closeAnnouncementModal()" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                                Cancel
+                            </button>
+                            <button type="submit" class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700">
+                                <span id="submitText">Create Announcement</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -663,10 +799,191 @@ $moduleStats = getModuleStats($conn);
             });
         }
 
+        // Announcement Functions
+        function loadAnnouncements() {
+            fetch('announcements_handler.php?action=get_announcements')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayAnnouncements(data.data);
+                    }
+                })
+                .catch(error => console.error('Error loading announcements:', error));
+        }
+
+        function displayAnnouncements(announcements) {
+            const container = document.getElementById('announcements-container');
+            
+            if (announcements.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">No announcements found.</p>';
+                return;
+            }
+            
+            container.innerHTML = announcements.slice(0, 3).map(announcement => {
+                const priorityColors = {
+                    'low': 'bg-gray-100 text-gray-800',
+                    'medium': 'bg-blue-100 text-blue-800',
+                    'high': 'bg-yellow-100 text-yellow-800',
+                    'urgent': 'bg-red-100 text-red-800'
+                };
+                
+                const statusColors = {
+                    'draft': 'bg-gray-100 text-gray-800',
+                    'published': 'bg-green-100 text-green-800',
+                    'archived': 'bg-red-100 text-red-800'
+                };
+                
+                return `
+                    <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-2 mb-2">
+                                    <h4 class="font-semibold text-gray-800">${announcement.title}</h4>
+                                    <span class="px-2 py-1 text-xs rounded-full ${priorityColors[announcement.priority]}">${announcement.priority.toUpperCase()}</span>
+                                    <span class="px-2 py-1 text-xs rounded-full ${statusColors[announcement.status]}">${announcement.status.toUpperCase()}</span>
+                                </div>
+                                <p class="text-gray-600 text-sm mb-2">${announcement.content.substring(0, 150)}${announcement.content.length > 150 ? '...' : ''}</p>
+                                ${announcement.image_path ? `<img src="../${announcement.image_path}" alt="Announcement" class="w-20 h-20 object-cover rounded-lg mb-2">` : ''}
+                                <div class="flex items-center text-xs text-gray-500 space-x-4">
+                                    <span>Target: ${announcement.target_audience}</span>
+                                    <span>Created: ${new Date(announcement.created_at).toLocaleDateString()}</span>
+                                    <span>By: ${announcement.created_by}</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2 ml-4">
+                                <button onclick="editAnnouncement('${announcement.announcement_id}')" class="text-blue-600 hover:text-blue-800">
+                                    <i data-lucide="edit" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="deleteAnnouncement('${announcement.announcement_id}')" class="text-red-600 hover:text-red-800">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            lucide.createIcons();
+        }
+
+        function openAnnouncementModal(isEdit = false) {
+            document.getElementById('announcementModal').classList.remove('hidden');
+            document.getElementById('modalTitle').textContent = isEdit ? 'Edit Announcement' : 'Create New Announcement';
+            document.getElementById('submitText').textContent = isEdit ? 'Update Announcement' : 'Create Announcement';
+            
+            if (!isEdit) {
+                document.getElementById('announcementForm').reset();
+                document.getElementById('imagePreview').classList.add('hidden');
+            }
+        }
+
+        function closeAnnouncementModal() {
+            document.getElementById('announcementModal').classList.add('hidden');
+            document.getElementById('announcementForm').reset();
+            document.getElementById('imagePreview').classList.add('hidden');
+        }
+
+        function editAnnouncement(announcementId) {
+            fetch(`announcements_handler.php?action=get_announcement&id=${announcementId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const announcement = data.data;
+                        document.getElementById('announcementId').value = announcement.announcement_id;
+                        document.getElementById('announcementTitle').value = announcement.title;
+                        document.getElementById('announcementContent').value = announcement.content;
+                        document.getElementById('announcementPriority').value = announcement.priority;
+                        document.getElementById('announcementAudience').value = announcement.target_audience;
+                        document.getElementById('announcementStatus').value = announcement.status;
+                        document.getElementById('existingImage').value = announcement.image_path || '';
+                        
+                        if (announcement.publish_date) {
+                            document.getElementById('announcementPublishDate').value = new Date(announcement.publish_date).toISOString().slice(0, 16);
+                        }
+                        if (announcement.expiry_date) {
+                            document.getElementById('announcementExpiryDate').value = new Date(announcement.expiry_date).toISOString().slice(0, 16);
+                        }
+                        
+                        if (announcement.image_path) {
+                            document.getElementById('imagePreview').classList.remove('hidden');
+                            document.getElementById('previewImg').src = '../' + announcement.image_path;
+                        }
+                        
+                        openAnnouncementModal(true);
+                    }
+                })
+                .catch(error => console.error('Error fetching announcement:', error));
+        }
+
+        function deleteAnnouncement(announcementId) {
+            if (confirm('Are you sure you want to delete this announcement?')) {
+                const formData = new FormData();
+                formData.append('action', 'delete');
+                formData.append('announcement_id', announcementId);
+                
+                fetch('announcements_handler.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        loadAnnouncements();
+                    } else {
+                        alert('Error deleting announcement: ' + data.message);
+                    }
+                })
+                .catch(error => console.error('Error deleting announcement:', error));
+            }
+        }
+
+        // Image preview functionality
+        document.getElementById('announcementImage').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('imagePreview').classList.remove('hidden');
+                    document.getElementById('previewImg').src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Form submission
+        document.getElementById('announcementForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const isEdit = document.getElementById('announcementId').value !== '';
+            formData.append('action', isEdit ? 'update' : 'create');
+            
+            fetch('announcements_handler.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeAnnouncementModal();
+                    loadAnnouncements();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error submitting form:', error);
+                alert('An error occurred while saving the announcement.');
+            });
+        });
+
         // Initialize tooltips and other interactive elements
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize dark mode
             initializeDarkMode();
+            
+            // Load announcements
+            loadAnnouncements();
             
             // Add any other initialization code here
             console.log('Transport & Mobility Management System - Administrator Dashboard Loaded');

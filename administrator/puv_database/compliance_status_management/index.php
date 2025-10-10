@@ -21,7 +21,7 @@ $compliance = getComplianceStatus($conn);
     <link href="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.css" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 </head>
-<body class="bg-slate-50 dark:bg-slate-900">
+<body style="background-color: #FBFBFB;" class="dark:bg-slate-900">
     <div class="flex h-screen">
         <!-- Sidebar -->
         <div id="sidebar" class="w-64 bg-white border-r border-slate-200 dark:bg-slate-900 dark:border-slate-700 transform transition-transform duration-300 ease-in-out translate-x-0">
@@ -44,7 +44,7 @@ $compliance = getComplianceStatus($conn);
                 </a>
 
                 <div class="space-y-1">
-                    <button onclick="toggleDropdown('puv-database')" class="w-full flex items-center justify-between p-2 rounded-xl text-orange-600 bg-orange-50 transition-all">
+                    <button onclick="toggleDropdown('puv-database')" class="w-full flex items-center justify-between p-2 rounded-xl transition-all" style="color: #4CAF50; background-color: rgba(76, 175, 80, 0.1);">
                         <div class="flex items-center">
                             <i data-lucide="database" class="w-5 h-5 mr-3"></i>
                             <span class="text-sm font-medium">PUV Database</span>
@@ -53,7 +53,7 @@ $compliance = getComplianceStatus($conn);
                     </button>
                     <div id="puv-database-menu" class="ml-8 space-y-1">
                         <a href="../../puv_database/vehicle_and_operator_records/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Vehicle & Operator Records</a>
-                        <a href="../../puv_database/compliance_status_management/" class="block p-2 text-sm text-orange-600 bg-orange-100 rounded-lg font-medium">Compliance Status Management</a>
+                        <a href="../../puv_database/compliance_status_management/" class="block p-2 text-sm rounded-lg font-medium" style="color: #4CAF50; background-color: rgba(76, 175, 80, 0.2);">Compliance Status Management</a>
                         <a href="../../puv_database/violation_history_integration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Violation History Integration</a>
                     </div>
                 </div>
@@ -118,28 +118,46 @@ $compliance = getComplianceStatus($conn);
                         <a href="../../parking_and_terminal_management/public_transparency/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Public Transparency</a>
                     </div>
                 </div>
+
+                <div class="space-y-1">
+                    <button onclick="toggleDropdown('user-mgmt')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                        <div class="flex items-center">
+                            <i data-lucide="users" class="w-5 h-5 mr-3"></i>
+                            <span class="text-sm font-medium">User Management</span>
+                        </div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="user-mgmt-icon"></i>
+                    </button>
+                    <div id="user-mgmt-menu" class="hidden ml-8 space-y-1">
+                        <a href="../../user_management/account_registry/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Account Registry</a>
+                        <a href="../../user_management/verification_queue/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Verification Queue</a>
+                        <a href="../../user_management/account_maintenance/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Account Maintenance</a>
+                        <a href="../../user_management/roles_and_permissions/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Roles & Permissions</a>
+                        <a href="../../user_management/audit_logs/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Audit Logs</a>
+                    </div>
+                </div>
             </nav>
         </div>
 
         <!-- Main Content -->
         <div class="flex-1 flex flex-col transition-all duration-300 ease-in-out">
             <!-- Header -->
-            <div class="bg-white border-b border-slate-200 px-6 py-4 dark:bg-slate-800 dark:border-slate-700">
+            <div class="bg-white border-b border-gray-200 px-6 py-4 dark:bg-slate-800 dark:border-slate-700">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-4">
-                        <button onclick="toggleSidebar()" class="p-2 rounded-lg text-slate-500 hover:bg-slate-200 transition-colors duration-200">
+                        <button onclick="toggleSidebar()" class="p-2 rounded-lg text-gray-500 hover:bg-gray-200 transition-colors duration-200">
                             <i data-lucide="menu" class="w-6 h-6"></i>
                         </button>
                         <div>
-                            <h1 class="text-md font-bold dark:text-white">TRANSPORT & MOBILITY MANAGEMENT</h1>
-                            <span class="text-xs text-slate-500 font-bold">PUV Database > Compliance Status Management</span>
+                            <h1 class="text-md font-bold dark:text-white">COMPLIANCE STATUS MANAGEMENT</h1>
+                            <span class="text-xs text-gray-500 font-bold">PUV Database Management</span>
                         </div>
                     </div>
                     <div class="flex-1 max-w-md mx-8">
                         <div class="relative">
                             <i data-lucide="search" class="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500"></i>
-                            <input type="text" placeholder="Search compliance records..." 
-                                   class="w-full pl-10 pr-4 py-2 bg-slate-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-300">
+                            <input type="text" id="searchInput" placeholder="Search compliance..." 
+                                   class="w-full pl-10 pr-4 py-2 bg-slate-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-300"
+                                   onkeyup="searchCompliance()">
                         </div>
                     </div>
                     <div class="flex items-center space-x-2">
@@ -152,16 +170,17 @@ $compliance = getComplianceStatus($conn);
 
             <!-- Page Content -->
             <div class="flex-1 p-6 overflow-auto">
+
                 <!-- Stats Cards -->
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                     <div class="bg-white p-6 rounded-xl border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-slate-500 text-sm">Compliant Vehicles</p>
-                                <p class="text-2xl font-bold text-green-600"><?php echo round($stats['active_vehicles'] * $stats['compliance_rate'] / 100); ?></p>
+                                <p class="text-2xl font-bold" style="color: #4CAF50;"><?php echo round($stats['active_vehicles'] * $stats['compliance_rate'] / 100); ?></p>
                             </div>
-                            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                                <i data-lucide="check-circle" class="w-6 h-6 text-green-600"></i>
+                            <div class="w-12 h-12 rounded-lg flex items-center justify-center" style="background-color: rgba(76, 175, 80, 0.1);">
+                                <i data-lucide="check-circle" class="w-6 h-6" style="color: #4CAF50;"></i>
                             </div>
                         </div>
                     </div>
@@ -180,10 +199,10 @@ $compliance = getComplianceStatus($conn);
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-slate-500 text-sm">Expired Franchises</p>
-                                <p class="text-2xl font-bold text-orange-600"><?php echo round($stats['active_vehicles'] * 0.1); ?></p>
+                                <p class="text-2xl font-bold" style="color: #FDA811;"><?php echo round($stats['active_vehicles'] * 0.1); ?></p>
                             </div>
-                            <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                                <i data-lucide="clock" class="w-6 h-6 text-orange-600"></i>
+                            <div class="w-12 h-12 rounded-lg flex items-center justify-center" style="background-color: rgba(253, 168, 17, 0.1);">
+                                <i data-lucide="clock" class="w-6 h-6" style="color: #FDA811;"></i>
                             </div>
                         </div>
                     </div>
@@ -193,8 +212,8 @@ $compliance = getComplianceStatus($conn);
                                 <p class="text-slate-500 text-sm">Avg Compliance Score</p>
                                 <p class="text-2xl font-bold text-slate-900 dark:text-white"><?php echo $stats['compliance_rate']; ?>%</p>
                             </div>
-                            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                                <i data-lucide="trending-up" class="w-6 h-6 text-blue-600"></i>
+                            <div class="w-12 h-12 rounded-lg flex items-center justify-center" style="background-color: rgba(74, 144, 226, 0.1);">
+                                <i data-lucide="trending-up" class="w-6 h-6" style="color: #4A90E2;"></i>
                             </div>
                         </div>
                     </div>
@@ -204,7 +223,7 @@ $compliance = getComplianceStatus($conn);
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-bold text-slate-900 dark:text-white">Compliance Status Management</h2>
                     <div class="flex space-x-3">
-                        <button onclick="updateScores()" class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 flex items-center space-x-2">
+                        <button onclick="updateScores()" class="px-4 py-2 text-white rounded-lg flex items-center space-x-2 transition-colors" style="background-color: #4CAF50;" onmouseover="this.style.backgroundColor='#45A049'" onmouseout="this.style.backgroundColor='#4CAF50'">
                             <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                             <span>Update Scores</span>
                         </button>
@@ -439,7 +458,7 @@ $compliance = getComplianceStatus($conn);
                             </div>
                             <div class="flex space-x-2">
                                 <button class="px-3 py-1 border border-slate-300 rounded text-slate-600 hover:bg-slate-50">Previous</button>
-                                <button class="px-3 py-1 bg-orange-500 text-white rounded">1</button>
+                                <button class="px-3 py-1 text-white rounded" style="background-color: #4CAF50;">1</button>
                                 <button class="px-3 py-1 border border-slate-300 rounded text-slate-600 hover:bg-slate-50">2</button>
                                 <button class="px-3 py-1 border border-slate-300 rounded text-slate-600 hover:bg-slate-50">3</button>
                                 <button class="px-3 py-1 border border-slate-300 rounded text-slate-600 hover:bg-slate-50">Next</button>
@@ -589,12 +608,19 @@ $compliance = getComplianceStatus($conn);
         
         // Filter functions
         function applyFilters() {
+            // Get search value from any search input (desktop or mobile)
+            const searchInputs = document.querySelectorAll('input[placeholder*="Search"]');
+            let searchValue = '';
+            searchInputs.forEach(input => {
+                if (input.value) searchValue = input.value;
+            });
+            
             const filters = {
                 franchise_status: document.getElementById('franchise_filter')?.value || '',
                 inspection_status: document.getElementById('inspection_filter')?.value || '',
                 compliance_score_range: document.getElementById('score_filter')?.value || '',
                 due_date: document.getElementById('date_filter')?.value || '',
-                search: document.querySelector('input[placeholder="Search compliance records..."]')?.value || ''
+                search: searchValue
             };
             
             // Convert compliance score range to min/max
@@ -879,13 +905,19 @@ $compliance = getComplianceStatus($conn);
             });
         }
         
-        // Add event listeners when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            const searchInput = document.querySelector('input[placeholder="Search compliance records..."]');
-            if (searchInput) {
-                searchInput.addEventListener('input', debounce(applyFilters, 500));
-            }
-        });
+        function searchCompliance() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('tbody tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
         
         function debounce(func, wait) {
             let timeout;
@@ -899,26 +931,34 @@ $compliance = getComplianceStatus($conn);
             };
         }
         
+        // Enhanced sidebar toggle function with smooth animations
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const mainContent = document.querySelector('.flex-1.flex.flex-col');
             
+            // Add null checks for safety
+            if (!sidebar || !mainContent) {
+                console.error('Sidebar or main content element not found');
+                return;
+            }
+            
+            // Toggle sidebar visibility
             if (sidebar.classList.contains('-translate-x-full')) {
                 // Show sidebar
                 sidebar.classList.remove('-translate-x-full');
                 sidebar.classList.add('translate-x-0');
-                if (mainContent) {
-                    mainContent.style.marginLeft = '0';
-                    mainContent.style.width = 'calc(100% - 16rem)';
-                }
+                
+                // Adjust main content
+                mainContent.style.marginLeft = '0';
+                mainContent.style.width = 'calc(100% - 16rem)';
             } else {
                 // Hide sidebar
-                sidebar.classList.add('-translate-x-full');
                 sidebar.classList.remove('translate-x-0');
-                if (mainContent) {
-                    mainContent.style.marginLeft = '-16rem';
-                    mainContent.style.width = '100%';
-                }
+                sidebar.classList.add('-translate-x-full');
+                
+                // Expand main content to full width
+                mainContent.style.marginLeft = '-16rem';
+                mainContent.style.width = '100%';
             }
         }
     </script>

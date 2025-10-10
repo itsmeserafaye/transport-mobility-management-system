@@ -119,10 +119,10 @@ function getStatusBadgeClass($status) {
     <link href="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.css" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 </head>
-<body class="bg-slate-50 dark:bg-slate-900">
+<body class="bg-gray-50 dark:bg-slate-900" style="background-color: #FBFBFB;">
     <div class="flex h-screen">
         <!-- Sidebar -->
-        <div id="sidebar" class="w-64 bg-white border-r border-slate-200 dark:bg-slate-900 dark:border-slate-700 transform transition-transform duration-300 ease-in-out translate-x-0">
+        <div id="sidebar" class="w-64 bg-white border-r border-gray-200 dark:bg-slate-900 dark:border-slate-700 transform transition-transform duration-300 ease-in-out translate-x-0">
             <div class="p-6">
                 <div class="flex items-center space-x-3">
                     <img src="../../../upload/Caloocan_City.png" alt="Caloocan City Logo" class="w-10 h-10 rounded-xl">
@@ -209,7 +209,7 @@ function getStatusBadgeClass($status) {
 
                 <!-- Terminal Management Module -->
                 <div class="space-y-1">
-                    <button onclick="toggleDropdown('terminal-mgmt')" class="w-full flex items-center justify-between p-2 rounded-xl text-orange-600 bg-orange-50 transition-all">
+                    <button onclick="toggleDropdown('terminal-mgmt')" class="w-full flex items-center justify-between p-2 rounded-xl transition-all" style="color: #4CAF50; background-color: rgba(76, 175, 80, 0.1);">
                         <div class="flex items-center">
                             <i data-lucide="map-pin" class="w-5 h-5 mr-3"></i>
                             <span class="text-sm font-medium">Terminal Management</span>
@@ -217,9 +217,27 @@ function getStatusBadgeClass($status) {
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="terminal-mgmt-icon" style="transform: rotate(180deg);"></i>
                     </button>
                     <div id="terminal-mgmt-menu" class="ml-8 space-y-1">
-                        <a href="../terminal_assignment_management/" class="block p-2 text-sm text-orange-600 bg-orange-100 rounded-lg font-medium">Terminal Assignment</a>
+                        <a href="../terminal_assignment_management/" class="block p-2 text-sm rounded-lg font-medium" style="color: #4CAF50; background-color: rgba(76, 175, 80, 0.2);">Terminal Assignment</a>
                         <a href="../roster_and_delivery/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Roster & Directory</a>
                         <a href="../public_transparency/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Public Transparency</a>
+                    </div>
+                </div>
+
+                <!-- User Management Module -->
+                <div class="space-y-1">
+                    <button onclick="toggleDropdown('user-mgmt')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                        <div class="flex items-center">
+                            <i data-lucide="users" class="w-5 h-5 mr-3"></i>
+                            <span class="text-sm font-medium">User Management</span>
+                        </div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="user-mgmt-icon"></i>
+                    </button>
+                    <div id="user-mgmt-menu" class="hidden ml-8 space-y-1">
+                        <a href="../../user_management/account_registry/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Account Registry</a>
+                        <a href="../../user_management/verification_queue/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Verification Queue</a>
+                        <a href="../../user_management/account_maintenance/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Account Maintenance</a>
+                        <a href="../../user_management/roles_and_permissions/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Roles & Permissions</a>
+                        <a href="../../user_management/audit_logs/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Audit Logs</a>
                     </div>
                 </div>
             </nav>
@@ -301,7 +319,7 @@ function getStatusBadgeClass($status) {
                 <div class="bg-white rounded-xl border border-slate-200">
                     <div class="p-6 border-b border-slate-200 flex justify-between items-center">
                         <h2 class="text-lg font-semibold text-slate-900">Terminal Assignments</h2>
-                        <button onclick="openAssignmentModal()" class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors">
+                        <button onclick="openAssignmentModal()" class="px-4 py-2 text-white rounded-lg transition-colors" style="background-color: #4CAF50;" onmouseover="this.style.backgroundColor='#45a049'" onmouseout="this.style.backgroundColor='#4CAF50'">
                             <i data-lucide="plus" class="w-4 h-4 inline mr-2"></i>
                             New Assignment
                         </button>
@@ -363,7 +381,7 @@ function getStatusBadgeClass($status) {
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-2">Operator</label>
-                            <select name="operator_id" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                            <select name="operator_id" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:border-green-500" style="--tw-ring-color: #4CAF50;">
                                 <option value="">Select Operator</option>
                                 <?php foreach ($operators as $operator): ?>
                                 <option value="<?= $operator['operator_id'] ?>" data-vehicle="<?= $operator['vehicle_id'] ?>" data-franchise="<?= $operator['franchise_id'] ?>">
@@ -374,7 +392,7 @@ function getStatusBadgeClass($status) {
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-2">Terminal</label>
-                            <select name="terminal_id" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                            <select name="terminal_id" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:border-green-500" style="--tw-ring-color: #4CAF50;">
                                 <option value="">Select Terminal</option>
                                 <?php foreach ($terminals as $terminal): ?>
                                 <option value="<?= $terminal['terminal_id'] ?>"><?= htmlspecialchars($terminal['terminal_name']) ?></option>
@@ -384,7 +402,7 @@ function getStatusBadgeClass($status) {
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2">Assignment Type</label>
-                        <select name="assignment_type" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                        <select name="assignment_type" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:border-green-500" style="--tw-ring-color: #4CAF50;">
                             <option value="">Select Type</option>
                             <option value="permanent">Permanent</option>
                             <option value="temporary">Temporary</option>
@@ -393,25 +411,25 @@ function getStatusBadgeClass($status) {
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2">Route</label>
-                        <input type="text" name="route" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500" placeholder="Enter route assignment">
+                        <input type="text" name="route" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:border-green-500" style="--tw-ring-color: #4CAF50;" placeholder="Enter route assignment">
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-2">Start Date</label>
-                            <input type="date" name="start_date" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                            <input type="date" name="start_date" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:border-green-500" style="--tw-ring-color: #4CAF50;">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-2">End Date</label>
-                            <input type="date" name="end_date" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                            <input type="date" name="end_date" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:border-green-500" style="--tw-ring-color: #4CAF50;">
                         </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2">Remarks</label>
-                        <textarea name="remarks" rows="3" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"></textarea>
+                        <textarea name="remarks" rows="3" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:border-green-500" style="--tw-ring-color: #4CAF50;"></textarea>
                     </div>
                     <div class="flex justify-end space-x-3 pt-4">
                         <button type="button" onclick="closeAssignmentModal()" class="px-4 py-2 text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
-                        <button type="submit" class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600">Create Assignment</button>
+                        <button type="submit" class="px-4 py-2 text-white rounded-lg" style="background-color: #4CAF50;" onmouseover="this.style.backgroundColor='#45a049'" onmouseout="this.style.backgroundColor='#4CAF50'">Create Assignment</button>
                     </div>
                 </form>
             </div>
@@ -458,7 +476,7 @@ function getStatusBadgeClass($status) {
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2">Terminal</label>
-                        <select id="edit_terminal_id" name="terminal_id" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                        <select id="edit_terminal_id" name="terminal_id" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:border-green-500" style="--tw-ring-color: #4CAF50;">
                             <option value="">Select Terminal</option>
                             <?php foreach ($terminals as $terminal): ?>
                             <option value="<?= $terminal['terminal_id'] ?>"><?= htmlspecialchars($terminal['terminal_name']) ?></option>
@@ -467,7 +485,7 @@ function getStatusBadgeClass($status) {
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2">Assignment Type</label>
-                        <select id="edit_assignment_type" name="assignment_type" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                        <select id="edit_assignment_type" name="assignment_type" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:border-green-500" style="--tw-ring-color: #4CAF50;">
                             <option value="permanent">Permanent</option>
                             <option value="temporary">Temporary</option>
                             <option value="toda">TODA Assignment</option>
@@ -475,21 +493,21 @@ function getStatusBadgeClass($status) {
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2">Route</label>
-                        <input type="text" id="edit_route" name="route" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500" placeholder="Enter route assignment">
+                        <input type="text" id="edit_route" name="route" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:border-green-500" style="--tw-ring-color: #4CAF50;" placeholder="Enter route assignment">
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-2">Start Date</label>
-                            <input type="date" id="edit_start_date" name="start_date" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                            <input type="date" id="edit_start_date" name="start_date" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:border-green-500" style="--tw-ring-color: #4CAF50;">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-2">End Date</label>
-                            <input type="date" id="edit_end_date" name="end_date" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                            <input type="date" id="edit_end_date" name="end_date" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:border-green-500" style="--tw-ring-color: #4CAF50;">
                         </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2">Status</label>
-                        <select id="edit_status" name="status" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                        <select id="edit_status" name="status" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:border-green-500" style="--tw-ring-color: #4CAF50;">
                             <option value="active">Active</option>
                             <option value="inactive">Inactive</option>
                             <option value="suspended">Suspended</option>
@@ -497,11 +515,11 @@ function getStatusBadgeClass($status) {
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2">Remarks</label>
-                        <textarea id="edit_remarks" name="remarks" rows="3" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"></textarea>
+                        <textarea id="edit_remarks" name="remarks" rows="3" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:border-green-500" style="--tw-ring-color: #4CAF50;"></textarea>
                     </div>
                     <div class="flex justify-end space-x-3 pt-4">
                         <button type="button" onclick="closeModal('editModal')" class="px-4 py-2 text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
-                        <button type="submit" class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600">Update Assignment</button>
+                        <button type="submit" class="px-4 py-2 text-white rounded-lg" style="background-color: #4CAF50;" onmouseover="this.style.backgroundColor='#45a049'" onmouseout="this.style.backgroundColor='#4CAF50'">Update Assignment</button>
                     </div>
                 </form>
             </div>

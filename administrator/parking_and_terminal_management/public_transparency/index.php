@@ -88,10 +88,10 @@ $repeat_offenders = getRepeatOffenders($db);
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="../../assets/css/dark-mode.css">
 </head>
-<body class="bg-slate-50 dark:bg-slate-900">
+<body style="background-color: #FBFBFB;" class="dark:bg-slate-900">
     <div class="flex h-screen">
         <!-- Sidebar -->
-        <div id="sidebar" class="w-64 bg-white border-r border-slate-200 dark:bg-slate-900 dark:border-slate-700 transform transition-transform duration-300 ease-in-out translate-x-0">
+        <div id="sidebar" class="w-64 bg-white border-r border-gray-200 dark:bg-slate-900 dark:border-slate-700 transform transition-transform duration-300 ease-in-out translate-x-0">
             <div class="p-6">
                 <div class="flex items-center space-x-3">
                     <img src="../../../upload/Caloocan_City.png" alt="Caloocan City Logo" class="w-10 h-10 rounded-xl">
@@ -101,7 +101,7 @@ $repeat_offenders = getRepeatOffenders($db);
                     </div>
                 </div>
             </div>
-            <hr class="border-slate-200 dark:border-slate-700 mx-2">
+            <hr class="border-gray-200 dark:border-slate-700 mx-2">
             
             <!-- Navigation -->
             <nav class="p-4 space-y-2">
@@ -178,7 +178,7 @@ $repeat_offenders = getRepeatOffenders($db);
 
                 <!-- Terminal Management Module -->
                 <div class="space-y-1">
-                    <button onclick="toggleDropdown('terminal-mgmt')" class="w-full flex items-center justify-between p-2 rounded-xl text-orange-600 bg-orange-50 transition-all">
+                    <button onclick="toggleDropdown('terminal-mgmt')" class="w-full flex items-center justify-between p-2 rounded-xl transition-all" style="color: #4CAF50; background-color: rgba(76, 175, 80, 0.1);">
                         <div class="flex items-center">
                             <i data-lucide="map-pin" class="w-5 h-5 mr-3"></i>
                             <span class="text-sm font-medium">Terminal Management</span>
@@ -188,7 +188,25 @@ $repeat_offenders = getRepeatOffenders($db);
                     <div id="terminal-mgmt-menu" class="ml-8 space-y-1">
                         <a href="../terminal_assignment_management/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Terminal Assignment</a>
                         <a href="../roster_and_delivery/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Roster & Directory</a>
-                        <a href="../public_transparency/" class="block p-2 text-sm text-orange-600 bg-orange-100 rounded-lg font-medium">Public Transparency</a>
+                        <a href="../public_transparency/" class="block p-2 text-sm rounded-lg font-medium" style="color: #4CAF50; background-color: rgba(76, 175, 80, 0.2);">Public Transparency</a>
+                    </div>
+                </div>
+
+                <!-- User Management Module -->
+                <div class="space-y-1">
+                    <button onclick="toggleDropdown('user-mgmt')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                        <div class="flex items-center">
+                            <i data-lucide="users" class="w-5 h-5 mr-3"></i>
+                            <span class="text-sm font-medium">User Management</span>
+                        </div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="user-mgmt-icon"></i>
+                    </button>
+                    <div id="user-mgmt-menu" class="hidden ml-8 space-y-1">
+                        <a href="../../user_management/account_registry/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Account Registry</a>
+                        <a href="../../user_management/verification_queue/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Verification Queue</a>
+                        <a href="../../user_management/account_maintenance/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Account Maintenance</a>
+                        <a href="../../user_management/roles_and_permissions/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Roles & Permissions</a>
+                        <a href="../../user_management/audit_logs/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Audit Logs</a>
                     </div>
                 </div>
             </nav>
@@ -209,7 +227,7 @@ $repeat_offenders = getRepeatOffenders($db);
                         </div>
                     </div>
                     <div class="flex items-center space-x-2">
-                        <input type="text" id="globalSearch" placeholder="Search terminals..." class="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                        <input type="text" id="globalSearch" placeholder="Search terminals..." class="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:border-green-500" style="--tw-ring-color: #4CAF50;">
                         <button onclick="performGlobalSearch()" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200">
                             <i data-lucide="search" class="w-4 h-4"></i>
                         </button>
@@ -277,7 +295,7 @@ $repeat_offenders = getRepeatOffenders($db);
                 <div class="bg-white rounded-xl border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
                     <div class="border-b border-slate-200 dark:border-slate-700">
                         <nav class="-mb-px flex space-x-8 px-6">
-                            <button onclick="switchTab('terminals')" id="terminals-tab" class="py-4 px-1 border-b-2 border-orange-500 font-medium text-sm text-orange-600">
+                            <button onclick="switchTab('terminals')" id="terminals-tab" class="py-4 px-1 border-b-2 font-medium text-sm" style="border-color: #4CAF50; color: #4CAF50;">
                                 Terminal Information
                             </button>
                             <button onclick="switchTab('toda')" id="toda-tab" class="py-4 px-1 border-b-2 border-transparent font-medium text-sm text-slate-500 hover:text-slate-700 hover:border-slate-300">
@@ -296,7 +314,7 @@ $repeat_offenders = getRepeatOffenders($db);
                     <div id="terminals-content" class="p-6">
                         <div class="flex justify-between items-center mb-6">
                             <h3 class="text-lg font-medium text-slate-900 dark:text-white">Public Terminal Information</h3>
-                            <button onclick="publishToPortal()" class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors">
+                            <button onclick="publishToPortal()" class="px-4 py-2 text-white rounded-lg transition-colors" style="background-color: #4CAF50;" onmouseover="this.style.backgroundColor='#45a049'" onmouseout="this.style.backgroundColor='#4CAF50'">
                                 <i data-lucide="globe" class="w-4 h-4 inline mr-2"></i>
                                 Publish to Citizen Portal
                             </button>
@@ -515,7 +533,9 @@ $repeat_offenders = getRepeatOffenders($db);
             
             // Show selected content and activate tab
             document.getElementById(tab + '-content').classList.remove('hidden');
-            document.getElementById(tab + '-tab').className = 'py-4 px-1 border-b-2 border-orange-500 font-medium text-sm text-orange-600';
+            document.getElementById(tab + '-tab').className = 'py-4 px-1 border-b-2 font-medium text-sm';
+            document.getElementById(tab + '-tab').style.borderColor = '#4CAF50';
+            document.getElementById(tab + '-tab').style.color = '#4CAF50';
         }
 
         function performGlobalSearch() {

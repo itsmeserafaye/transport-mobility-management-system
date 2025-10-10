@@ -234,34 +234,46 @@ function getStatistics($db) {
     $stats = [];
     
     // Total operators
-    $query = "SELECT COUNT(DISTINCT operator_id) as total FROM compliance_status";
+    $query = "SELECT COUNT(*) as total FROM operators";
     $stmt = $db->prepare($query);
     $stmt->execute();
     $stats['total_operators'] = $stmt->fetchColumn();
     
-    // Active vehicles
-    $query = "SELECT COUNT(DISTINCT vehicle_id) as total FROM compliance_status WHERE franchise_status = 'active'";
+    // Active vehicles (based on operator and vehicle status)
+    $query = "SELECT COUNT(DISTINCT v.vehicle_id) as total 
+              FROM vehicles v 
+              JOIN operators o ON v.operator_id = o.operator_id 
+              WHERE v.status = 'active' AND o.status = 'active'";
     $stmt = $db->prepare($query);
     $stmt->execute();
     $stats['active_vehicles'] = $stmt->fetchColumn();
     
-    // Compliance rate
-    $query = "SELECT AVG(compliance_score) as avg_score FROM compliance_status";
+    // Compliance rate (calculate based on actual compliance logic)
+    $query = "SELECT 
+                COUNT(*) as total,
+                SUM(CASE 
+                    WHEN (COALESCE(cs.compliance_score, 0) >= 80 
+                          AND COALESCE(cs.franchise_status, 'valid') = 'valid' 
+                          AND COALESCE(cs.inspection_status, 'passed') = 'passed') 
+                    THEN 1 ELSE 0 END) as compliant
+              FROM operators o
+              LEFT JOIN vehicles v ON o.operator_id = v.operator_id
+              LEFT JOIN compliance_status cs ON o.operator_id = cs.operator_id";
     $stmt = $db->prepare($query);
     $stmt->execute();
-    $stats['compliance_rate'] = round($stmt->fetchColumn(), 1);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    $stats['compliance_rate'] = $result['total'] > 0 ? round(($result['compliant'] / $result['total']) * 100, 1) : 0;
     
     // Pending inspections
-    $query = "SELECT COUNT(*) as total FROM compliance_status WHERE inspection_status = 'pending'";
+    $query = "SELECT COUNT(*) as total 
+              FROM operators o
+              LEFT JOIN compliance_status cs ON o.operator_id = cs.operator_id
+              WHERE COALESCE(cs.inspection_status, 'pending') = 'pending'";
     $stmt = $db->prepare($query);
     $stmt->execute();
     $stats['pending_inspections'] = $stmt->fetchColumn();
     
-    // Total violations
-    $query = "SELECT SUM(violation_count) as total FROM compliance_status";
-    $stmt = $db->prepare($query);
-    $stmt->execute();
-    $stats['total_violations'] = $stmt->fetchColumn() ?: 0;
+
     
     return $stats;
 }
@@ -342,4 +354,7 @@ function getComplianceById($db, $compliance_id) {
     $stmt->execute([$compliance_id]);
     return $stmt->fetch(PDO::FETCH_ASSOC);
 }
+
+
+
 ?>

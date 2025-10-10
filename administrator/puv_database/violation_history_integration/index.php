@@ -16,14 +16,87 @@ $limit = 10;
 $offset = ($page - 1) * $limit;
 
 // Get violations data with filters
-if ($search || $settlement_filter || $violation_type_filter || $date_from || $date_to) {
-    $violations = searchViolations($conn, $search, $settlement_filter, $violation_type_filter, $date_from, $date_to);
-} else {
-    $violations = getViolationHistory($conn, $limit, $offset);
+$query = "SELECT vh.*, o.first_name, o.last_name, o.operator_id, v.plate_number, v.vehicle_type, v.make, v.model,
+                 (SELECT COUNT(*) FROM violation_history vh2 WHERE vh2.operator_id = vh.operator_id) as total_violations
+          FROM violation_history vh
+          JOIN operators o ON vh.operator_id = o.operator_id
+          LEFT JOIN vehicles v ON vh.vehicle_id = v.vehicle_id
+          WHERE 1=1";
+
+$params = [];
+
+if ($search) {
+    $query .= " AND (o.first_name LIKE ? OR o.last_name LIKE ? OR v.plate_number LIKE ? OR vh.violation_type LIKE ?)";
+    $searchTerm = "%$search%";
+    $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm, $searchTerm]);
 }
+
+if ($settlement_filter) {
+    $query .= " AND vh.settlement_status = ?";
+    $params[] = $settlement_filter;
+}
+
+if ($violation_type_filter) {
+    $query .= " AND vh.violation_type = ?";
+    $params[] = $violation_type_filter;
+}
+
+if ($date_from) {
+    $query .= " AND vh.violation_date >= ?";
+    $params[] = $date_from;
+}
+
+if ($date_to) {
+    $query .= " AND vh.violation_date <= ?";
+    $params[] = $date_to;
+}
+
+$query .= " ORDER BY vh.violation_date DESC";
+
+if (!($search || $settlement_filter || $violation_type_filter || $date_from || $date_to)) {
+    $query .= " LIMIT " . (int)$limit . " OFFSET " . (int)$offset;
+}
+
+$stmt = $conn->prepare($query);
+$stmt->execute($params);
+$violations = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get statistics
 $stats = getStatistics($conn);
+
+// Add violation-specific statistics if not present
+if (!isset($stats['total_violations'])) {
+    $stats['total_violations'] = 0;
+    $stats['unpaid_fines'] = 0;
+    $stats['repeat_offenders'] = 0;
+    $stats['settlement_rate'] = 0;
+    
+    // Get violation statistics from database
+    try {
+        $query = "SELECT COUNT(*) as total FROM violation_history";
+        $stmt = $conn->prepare($query);
+        $stmt->execute();
+        $stats['total_violations'] = $stmt->fetchColumn() ?: 0;
+        
+        $query = "SELECT COALESCE(SUM(fine_amount), 0) as total FROM violation_history WHERE settlement_status = 'unpaid'";
+        $stmt = $conn->prepare($query);
+        $stmt->execute();
+        $stats['unpaid_fines'] = $stmt->fetchColumn() ?: 0;
+        
+        $query = "SELECT COUNT(DISTINCT operator_id) as total FROM violation_history WHERE operator_id IN (SELECT operator_id FROM violation_history GROUP BY operator_id HAVING COUNT(*) > 3)";
+        $stmt = $conn->prepare($query);
+        $stmt->execute();
+        $stats['repeat_offenders'] = $stmt->fetchColumn() ?: 0;
+        
+        $query = "SELECT COUNT(*) as total, SUM(CASE WHEN settlement_status = 'paid' THEN 1 ELSE 0 END) as paid FROM violation_history";
+        $stmt = $conn->prepare($query);
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        $stats['settlement_rate'] = $result['total'] > 0 ? round(($result['paid'] / $result['total']) * 100, 1) : 0;
+    } catch (Exception $e) {
+        // Keep default values if queries fail
+    }
+}
 if (function_exists('getTotalViolations')) {
     $total_violations = getTotalViolations($conn);
 } else {
@@ -41,7 +114,7 @@ $total_pages = ceil($total_violations / $limit);
     <link href="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.css" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 </head>
-<body class="bg-slate-50 dark:bg-slate-900">
+<body style="background-color: #FBFBFB;" class="dark:bg-slate-900">
     <div class="flex h-screen">
         <!-- Sidebar -->
         <div id="sidebar" class="w-64 bg-white border-r border-slate-200 dark:bg-slate-900 dark:border-slate-700 transform transition-transform duration-300 ease-in-out translate-x-0">
@@ -66,7 +139,7 @@ $total_pages = ceil($total_violations / $limit);
 
                 <!-- PUV Database Module -->
                 <div class="space-y-1">
-                    <button onclick="toggleDropdown('puv-database')" class="w-full flex items-center justify-between p-2 rounded-xl text-orange-600 bg-orange-50 transition-all">
+                    <button onclick="toggleDropdown('puv-database')" class="w-full flex items-center justify-between p-2 rounded-xl transition-all" style="color: #4CAF50; background-color: rgba(76, 175, 80, 0.1);">
                         <div class="flex items-center">
                             <i data-lucide="database" class="w-5 h-5 mr-3"></i>
                             <span class="text-sm font-medium">PUV Database</span>
@@ -76,7 +149,7 @@ $total_pages = ceil($total_violations / $limit);
                     <div id="puv-database-menu" class="ml-8 space-y-1">
                         <a href="../../puv_database/vehicle_and_operator_records/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Vehicle & Operator Records</a>
                         <a href="../../puv_database/compliance_status_management/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Compliance Status Management</a>
-                        <a href="../../puv_database/violation_history_integration/" class="block p-2 text-sm text-orange-600 bg-orange-100 rounded-lg font-medium">Violation History Integration</a>
+                        <a href="../../puv_database/violation_history_integration/" class="block p-2 text-sm rounded-lg font-medium" style="color: #4CAF50; background-color: rgba(76, 175, 80, 0.2);">Violation History Integration</a>
                     </div>
                 </div>
 
@@ -144,29 +217,47 @@ $total_pages = ceil($total_violations / $limit);
                         <a href="../../parking_and_terminal_management/public_transparency/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Public Transparency</a>
                     </div>
                 </div>
+
+                <div class="space-y-1">
+                    <button onclick="toggleDropdown('user-mgmt')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                        <div class="flex items-center">
+                            <i data-lucide="users" class="w-5 h-5 mr-3"></i>
+                            <span class="text-sm font-medium">User Management</span>
+                        </div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="user-mgmt-icon"></i>
+                    </button>
+                    <div id="user-mgmt-menu" class="hidden ml-8 space-y-1">
+                        <a href="../../user_management/account_registry/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Account Registry</a>
+                        <a href="../../user_management/verification_queue/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Verification Queue</a>
+                        <a href="../../user_management/account_maintenance/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Account Maintenance</a>
+                        <a href="../../user_management/roles_and_permissions/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Roles & Permissions</a>
+                        <a href="../../user_management/audit_logs/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Audit Logs</a>
+                    </div>
+                </div>
             </nav>
         </div>
 
         <!-- Main Content -->
         <div class="flex-1 flex flex-col transition-all duration-300 ease-in-out">
             <!-- Header -->
-            <div class="bg-white border-b border-slate-200 px-6 py-4 dark:bg-slate-800 dark:border-slate-700">
+            <div class="bg-white border-b border-gray-200 px-6 py-4 dark:bg-slate-800 dark:border-slate-700">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-4">
-                        <button onclick="toggleSidebar()" class="p-2 rounded-lg text-slate-500 hover:bg-slate-200 transition-colors duration-200">
+                        <button onclick="toggleSidebar()" class="p-2 rounded-lg text-gray-500 hover:bg-gray-200 transition-colors duration-200">
                             <i data-lucide="menu" class="w-6 h-6"></i>
                         </button>
                         <div>
-                            <h1 class="text-md font-bold dark:text-white">TRANSPORT & MOBILITY MANAGEMENT</h1>
-                            <span class="text-xs text-slate-500 font-bold">PUV Database > Violation History Integration</span>
+                            <h1 class="text-md font-bold dark:text-white">VIOLATION HISTORY INTEGRATION</h1>
+                            <span class="text-xs text-gray-500 font-bold">PUV Database Management</span>
                         </div>
                     </div>
                     <div class="flex-1 max-w-md mx-8">
-                        <form method="GET" class="relative">
+                        <div class="relative">
                             <i data-lucide="search" class="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500"></i>
-                            <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" placeholder="Search violations..." 
-                                   class="w-full pl-10 pr-4 py-2 bg-slate-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-300">
-                        </form>
+                            <input type="text" id="searchInput" placeholder="Search violations..." 
+                                   class="w-full pl-10 pr-4 py-2 bg-slate-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-300"
+                                   onkeyup="searchViolations()">
+                        </div>
                     </div>
                     <div class="flex items-center space-x-2">
                         <button class="p-2 rounded-xl text-slate-600 hover:bg-slate-200">
@@ -178,6 +269,7 @@ $total_pages = ceil($total_violations / $limit);
 
             <!-- Page Content -->
             <div class="flex-1 p-6 overflow-auto">
+
                 <?php if (isset($_GET['message'])): ?>
                 <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
                     <?php echo htmlspecialchars($_GET['message']); ?>
@@ -195,7 +287,7 @@ $total_pages = ceil($total_violations / $limit);
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-slate-500 text-sm">Total Violations</p>
-                                <p class="text-2xl font-bold text-red-600"><?php echo $stats['total_violations']; ?></p>
+                                <p class="text-2xl font-bold text-red-600"><?php echo $stats['total_violations'] ?? 0; ?></p>
                             </div>
                             <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
                                 <i data-lucide="alert-octagon" class="w-6 h-6 text-red-600"></i>
@@ -206,10 +298,10 @@ $total_pages = ceil($total_violations / $limit);
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-slate-500 text-sm">Unpaid Fines</p>
-                                <p class="text-2xl font-bold text-orange-600">₱<?php echo number_format($stats['unpaid_fines'], 0); ?></p>
+                                <p class="text-2xl font-bold" style="color: #FDA811;">₱<?php echo number_format($stats['unpaid_fines'] ?? 0, 0); ?></p>
                             </div>
-                            <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                                <i data-lucide="credit-card" class="w-6 h-6 text-orange-600"></i>
+                            <div class="w-12 h-12 rounded-lg flex items-center justify-center" style="background-color: rgba(253, 168, 17, 0.1);">
+                                <i data-lucide="credit-card" class="w-6 h-6" style="color: #FDA811;"></i>
                             </div>
                         </div>
                     </div>
@@ -217,10 +309,10 @@ $total_pages = ceil($total_violations / $limit);
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-slate-500 text-sm">Repeat Offenders</p>
-                                <p class="text-2xl font-bold text-purple-600"><?php echo $stats['repeat_offenders']; ?></p>
+                                <p class="text-2xl font-bold" style="color: #4A90E2;"><?php echo $stats['repeat_offenders'] ?? 0; ?></p>
                             </div>
-                            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                                <i data-lucide="repeat" class="w-6 h-6 text-purple-600"></i>
+                            <div class="w-12 h-12 rounded-lg flex items-center justify-center" style="background-color: rgba(74, 144, 226, 0.1);">
+                                <i data-lucide="repeat" class="w-6 h-6" style="color: #4A90E2;"></i>
                             </div>
                         </div>
                     </div>
@@ -228,10 +320,10 @@ $total_pages = ceil($total_violations / $limit);
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-slate-500 text-sm">Settlement Rate</p>
-                                <p class="text-2xl font-bold text-green-600"><?php echo $stats['settlement_rate']; ?>%</p>
+                                <p class="text-2xl font-bold" style="color: #4CAF50;"><?php echo $stats['settlement_rate'] ?? 0; ?>%</p>
                             </div>
-                            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                                <i data-lucide="trending-up" class="w-6 h-6 text-green-600"></i>
+                            <div class="w-12 h-12 rounded-lg flex items-center justify-center" style="background-color: rgba(76, 175, 80, 0.1);">
+                                <i data-lucide="trending-up" class="w-6 h-6" style="color: #4CAF50;"></i>
                             </div>
                         </div>
                     </div>
@@ -241,11 +333,11 @@ $total_pages = ceil($total_violations / $limit);
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-bold text-slate-900 dark:text-white">Violation History Integration</h2>
                     <div class="flex space-x-3">
-                        <button onclick="openAddModal()" class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 flex items-center space-x-2">
+                        <button onclick="openAddModal()" class="px-4 py-2 text-white rounded-lg flex items-center space-x-2 transition-colors" style="background-color: #4CAF50;" onmouseover="this.style.backgroundColor='#45A049'" onmouseout="this.style.backgroundColor='#4CAF50'">
                             <i data-lucide="plus" class="w-4 h-4"></i>
                             <span>Add Violation</span>
                         </button>
-                        <button onclick="showAnalytics()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center space-x-2">
+                        <button onclick="showAnalytics()" class="px-4 py-2 text-white rounded-lg flex items-center space-x-2 transition-colors" style="background-color: #4A90E2;" onmouseover="this.style.backgroundColor='#357ABD'" onmouseout="this.style.backgroundColor='#4A90E2'">
                             <i data-lucide="bar-chart" class="w-4 h-4"></i>
                             <span>Analytics</span>
                         </button>
@@ -381,7 +473,7 @@ $total_pages = ceil($total_violations / $limit);
                                 
                                 <?php for ($i = max(1, $page - 2); $i <= min($total_pages, $page + 2); $i++): ?>
                                 <a href="?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&settlement_status=<?php echo urlencode($settlement_filter); ?>&violation_type=<?php echo urlencode($violation_type_filter); ?>&date_from=<?php echo urlencode($date_from); ?>&date_to=<?php echo urlencode($date_to); ?>" 
-                                   class="px-3 py-1 <?php echo $i == $page ? 'bg-orange-500 text-white' : 'border border-slate-300 text-slate-600 hover:bg-slate-50'; ?> rounded"><?php echo $i; ?></a>
+                                   class="px-3 py-1 <?php echo $i == $page ? 'text-white' : 'border border-gray-300 text-gray-600 hover:bg-gray-50'; ?> rounded" <?php echo $i == $page ? 'style="background-color: #4CAF50;"' : ''; ?>><?php echo $i; ?></a>
                                 <?php endfor; ?>
                                 
                                 <?php if ($page < $total_pages): ?>
@@ -504,6 +596,9 @@ $total_pages = ceil($total_violations / $limit);
     <script>
         // Initialize Lucide icons
         lucide.createIcons();
+        
+        // Setup search functionality
+        setupSearchListeners();
 
         function toggleDropdown(menuId) {
             const allMenus = document.querySelectorAll('[id$="-menu"]');
@@ -627,21 +722,19 @@ $total_pages = ceil($total_violations / $limit);
             }
         }
         
-        // Search on Enter key
-        document.querySelector('input[name="search"]').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                this.form.submit();
-            }
-        });
-
-        // Auto-submit search after typing (debounced)
-        let searchTimeout;
-        document.querySelector('input[name="search"]').addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                this.form.submit();
-            }, 500);
-        });
+        function searchViolations() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('tbody tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
 
         // Export menu toggle
         function toggleExportMenu() {
@@ -720,28 +813,36 @@ $total_pages = ceil($total_violations / $limit);
             lucide.createIcons();
         }
         
+        // Enhanced sidebar toggle function with smooth animations
         function toggleSidebar() {
-              const sidebar = document.getElementById('sidebar');
-              const mainContent = document.querySelector('.flex-1.flex.flex-col');
-              
-              if (sidebar.classList.contains('-translate-x-full')) {
-                  // Show sidebar
-                  sidebar.classList.remove('-translate-x-full');
-                  sidebar.classList.add('translate-x-0');
-                  if (mainContent) {
-                      mainContent.style.marginLeft = '0';
-                      mainContent.style.width = 'calc(100% - 16rem)';
-                  }
-              } else {
-                  // Hide sidebar
-                  sidebar.classList.add('-translate-x-full');
-                  sidebar.classList.remove('translate-x-0');
-                  if (mainContent) {
-                      mainContent.style.marginLeft = '-16rem';
-                      mainContent.style.width = '100%';
-                  }
-              }
-          }
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.querySelector('.flex-1.flex.flex-col');
+            
+            // Add null checks for safety
+            if (!sidebar || !mainContent) {
+                console.error('Sidebar or main content element not found');
+                return;
+            }
+            
+            // Toggle sidebar visibility
+            if (sidebar.classList.contains('-translate-x-full')) {
+                // Show sidebar
+                sidebar.classList.remove('-translate-x-full');
+                sidebar.classList.add('translate-x-0');
+                
+                // Adjust main content
+                mainContent.style.marginLeft = '0';
+                mainContent.style.width = 'calc(100% - 16rem)';
+            } else {
+                // Hide sidebar
+                sidebar.classList.remove('translate-x-0');
+                sidebar.classList.add('-translate-x-full');
+                
+                // Expand main content to full width
+                mainContent.style.marginLeft = '-16rem';
+                mainContent.style.width = '100%';
+            }
+        }
 
     </script>
 </body>

@@ -177,29 +177,34 @@
 
 ## Phase 7: External System Integration
 
-### Step 19: Government Integration *(External Connections)*
+### Step 19: Citizen Information & Engagement Integration *(External Connections)*
 
-**Sub-module 7.1: LGU System Integration**
-- Connect to Citizen Registry Portal
-- Sync with Treasurer/Finance systems
-- Link to Legal Case Management
-- Update Road Monitoring systems
+**Sub-module 7.1: Citizen Registry & Feedback Integration**
+- **Traffic Violation Ticketing ⇄ Feedback And Grievance Portal**
+  - Provide appeal portal access for traffic violations (GET)
+  - Receive violation appeals from citizens (POST)
+- **Traffic Violation Ticketing → Citizen Registry System**
+  - Link violator identity with registered citizens (POST)
+- **Traffic Violation Ticketing → Notification and Alert System**
+  - Send violation notification data to citizens (POST)
 
-### Step 20: Transport Integration *(External Connections)*
+### Step 20: Permits & Licensing Management Integration *(External Connections)*
 
-**Sub-module 7.2: Transport System Integration**
-- Connect to LTO/MVIS Database
-- Sync with Transport Permit Subsystem
-- Link to Insurance Systems
-- Update Urban Planning GIS
+**Sub-module 7.2: Transport Permit & Franchise Integration**
+- **Franchise Management ← Franchise and Transport Permit**
+  - Validate vehicle registration status (GET)
+  - Check franchise validity for applicants (GET)
+- **PUV Database → E-Permit Tracker**
+  - Update transport unit registration (POST)
+  - Update vehicle franchise status (POST)
 
-### Step 21: Citizen Services Integration *(External Connections)*
+### Step 21: Revenue Collection & Treasury Integration *(External Connections)*
 
-**Sub-module 7.3: Citizen Service Integration**
-- Connect to Citizen Transparency Portal
-- Link to Grievance Systems
-- Sync with LGU Appointments
-- Update Document Records
+**Sub-module 7.3: Treasury & Financial Integration**
+- **Traffic Violation Ticketing → Treasury Dashboard & Report**
+  - Send violation revenue reports with estimated and collected amounts (POST)
+  - Provide settlement status tracking data
+  - Generate collection statistics for treasury systems
 
 ---
 

@@ -8,8 +8,42 @@ $conn = $database->getConnection();
 // Get violation records
 $violations = getViolationRecords($conn);
 
-// Get statistics
-$stats = getStatistics($conn);
+// Get statistics for violation record management
+$stats = getViolationRecordStats($conn);
+
+function getViolationRecordStats($conn) {
+    $stats = [];
+    
+    // Total violations
+    $query = "SELECT COUNT(*) as count FROM violation_history";
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+    $stats['total_violations'] = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+    
+    // Unpaid fines
+    $query = "SELECT SUM(fine_amount) as total FROM violation_history WHERE settlement_status = 'unpaid'";
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+    $stats['unpaid_fines'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0;
+    
+    // Repeat offenders
+    $query = "SELECT COUNT(DISTINCT operator_id) as count FROM (
+                SELECT operator_id FROM violation_history 
+                GROUP BY operator_id HAVING COUNT(*) >= 3
+              ) as repeat_ops";
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+    $stats['repeat_offenders'] = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+    
+    // Settlement rate
+    $query = "SELECT ROUND(AVG(CASE WHEN settlement_status = 'paid' THEN 100 ELSE 0 END), 1) as rate
+              FROM violation_history";
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+    $stats['settlement_rate'] = $stmt->fetch(PDO::FETCH_ASSOC)['rate'] ?? 0;
+    
+    return $stats;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -21,10 +55,10 @@ $stats = getStatistics($conn);
     <link href="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.css" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 </head>
-<body class="bg-slate-50 dark:bg-slate-900">
+<body style="background-color: #FBFBFB;" class="dark:bg-slate-900">
     <div class="flex h-screen">
         <!-- Sidebar -->
-        <div id="sidebar" class="w-64 bg-white border-r border-slate-200 dark:bg-slate-900 dark:border-slate-700 transform transition-transform duration-300 ease-in-out translate-x-0">
+        <div id="sidebar" class="w-64 bg-white border-r border-gray-200 dark:bg-slate-900 dark:border-slate-700 transform transition-transform duration-300 ease-in-out translate-x-0">
             <div class="p-6">
                 <div class="flex items-center space-x-3">
                     <img src="../../../upload/Caloocan_City.png" alt="Caloocan City Logo" class="w-10 h-10 rounded-xl">
@@ -34,7 +68,7 @@ $stats = getStatistics($conn);
                     </div>
                 </div>
             </div>
-            <hr class="border-slate-200 dark:border-slate-700 mx-2">
+            <hr class="border-gray-200 dark:border-slate-700 mx-2">
             
             <!-- Navigation -->
             <nav class="p-4 space-y-2">
@@ -77,9 +111,8 @@ $stats = getStatistics($conn);
                     </div>
                 </div>
 
-                <!-- Traffic Violation Ticketing Module -->
                 <div class="space-y-1">
-                    <button onclick="toggleDropdown('violation-ticketing')" class="w-full flex items-center justify-between p-2 rounded-xl text-orange-600 bg-orange-50 transition-all">
+                    <button onclick="toggleDropdown('violation-ticketing')" class="w-full flex items-center justify-between p-2 rounded-xl transition-all" style="color: #4CAF50; background-color: rgba(76, 175, 80, 0.1);">
                         <div class="flex items-center">
                             <i data-lucide="alert-triangle" class="w-5 h-5 mr-3"></i>
                             <span class="text-sm font-medium">Traffic Violation Ticketing</span>
@@ -87,7 +120,7 @@ $stats = getStatistics($conn);
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="violation-ticketing-icon" style="transform: rotate(180deg);"></i>
                     </button>
                     <div id="violation-ticketing-menu" class="ml-8 space-y-1">
-                        <a href="../../traffic_violation_ticketing/violation_record_management/" class="block p-2 text-sm text-orange-600 bg-orange-100 rounded-lg font-medium">Violation Record Management</a>
+                        <a href="../../traffic_violation_ticketing/violation_record_management/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Violation Record Management</a>
                         <a href="../../traffic_violation_ticketing/linking_and_analytics/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">TVT Analytics</a>
                         <a href="../../traffic_violation_ticketing/revenue_integration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Revenue Integration</a>
                     </div>
@@ -122,6 +155,23 @@ $stats = getStatistics($conn);
                         <a href="../../parking_and_terminal_management/terminal_assignment_management/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Terminal Assignment</a>
                         <a href="../../parking_and_terminal_management/roster_and_delivery/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Roster & Directory</a>
                         <a href="../../parking_and_terminal_management/public_transparency/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Public Transparency</a>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <button onclick="toggleDropdown('user-mgmt')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                        <div class="flex items-center">
+                            <i data-lucide="users" class="w-5 h-5 mr-3"></i>
+                            <span class="text-sm font-medium">User Management</span>
+                        </div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="user-mgmt-icon"></i>
+                    </button>
+                    <div id="user-mgmt-menu" class="hidden ml-8 space-y-1">
+                        <a href="../../user_management/account_registry/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Account Registry</a>
+                        <a href="../../user_management/verification_queue/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Verification Queue</a>
+                        <a href="../../user_management/account_maintenance/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Account Maintenance</a>
+                        <a href="../../user_management/roles_and_permissions/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Roles & Permissions</a>
+                        <a href="../../user_management/audit_logs/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Audit Logs</a>
                     </div>
                 </div>
             </nav>
@@ -221,11 +271,11 @@ $stats = getStatistics($conn);
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-bold text-slate-900 dark:text-white">Violation Record Management</h2>
                     <div class="flex space-x-3">
-                        <button onclick="openAddModal()" class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 flex items-center space-x-2">
+                        <button onclick="openAddModal()" class="px-4 py-2 text-white rounded-lg flex items-center space-x-2 transition-colors" style="background-color: #4CAF50;" onmouseover="this.style.backgroundColor='#45A049'" onmouseout="this.style.backgroundColor='#4CAF50'">
                             <i data-lucide="plus" class="w-4 h-4"></i>
                             <span>Add Violation</span>
                         </button>
-                        <button onclick="showAnalytics()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center space-x-2">
+                        <button onclick="showAnalytics()" class="px-4 py-2 text-white rounded-lg flex items-center space-x-2 transition-colors" style="background-color: #4A90E2;" onmouseover="this.style.backgroundColor='#357ABD'" onmouseout="this.style.backgroundColor='#4A90E2'">
                             <i data-lucide="bar-chart" class="w-4 h-4"></i>
                             <span>Analytics</span>
                         </button>
@@ -428,6 +478,22 @@ $stats = getStatistics($conn);
         // Initialize Lucide icons after DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
             lucide.createIcons();
+            
+            // Show Traffic Violation menu and highlight current page
+            const violationMenu = document.getElementById('violation-ticketing-menu');
+            const violationIcon = document.getElementById('violation-ticketing-icon');
+            if (violationMenu && violationIcon) {
+                violationMenu.classList.remove('hidden');
+                violationIcon.style.transform = 'rotate(180deg)';
+                
+                // Highlight current page
+                const currentLink = violationMenu.querySelector('a[href*="violation_record_management"]');
+                if (currentLink) {
+                    currentLink.style.color = '#4CAF50';
+                    currentLink.style.backgroundColor = 'rgba(76, 175, 80, 0.2)';
+                    currentLink.classList.add('font-medium');
+                }
+            }
         });
         
         // Also initialize icons immediately

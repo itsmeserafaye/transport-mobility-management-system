@@ -33,55 +33,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Get data for display
-$unlinked_tickets = getUnlinkedTickets($conn);
+// Get data for display using existing tables
 $analytics_data = getViolationAnalytics($conn);
 $repeat_offenders = getRepeatOffenders($conn);
 $enforcement_recommendations = getEnforcementRecommendations($conn);
 $stats = getLinkingStats($conn);
 
-function getUnlinkedTickets($conn) {
-    $query = "SELECT dt.*, os.ocr_confidence 
-              FROM digitized_tickets dt 
-              JOIN ocr_ticket_scans os ON dt.scan_id = os.scan_id 
-              WHERE dt.linking_status = 'unlinked' 
-              ORDER BY dt.created_at DESC";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
 function getViolationAnalytics($conn) {
-    $query = "SELECT va.*, o.first_name, o.last_name, v.plate_number, v.vehicle_type 
-              FROM violation_analytics va 
-              JOIN operators o ON va.operator_id = o.operator_id 
-              JOIN vehicles v ON va.vehicle_id = v.vehicle_id 
-              ORDER BY va.total_violations DESC, va.compliance_score ASC";
+    $query = "SELECT vh.*, o.first_name, o.last_name, v.plate_number, v.vehicle_type,
+                     COUNT(vh.violation_id) as total_violations,
+                     AVG(CASE WHEN vh.settlement_status = 'paid' THEN 100 ELSE 0 END) as compliance_score,
+                     CASE 
+                         WHEN COUNT(vh.violation_id) >= 5 THEN 'high'
+                         WHEN COUNT(vh.violation_id) >= 3 THEN 'medium'
+                         ELSE 'low'
+                     END as risk_level
+              FROM violation_history vh 
+              JOIN operators o ON vh.operator_id = o.operator_id 
+              JOIN vehicles v ON vh.vehicle_id = v.vehicle_id 
+              GROUP BY vh.operator_id, vh.vehicle_id
+              ORDER BY total_violations DESC";
     $stmt = $conn->prepare($query);
     $stmt->execute();
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 function getRepeatOffenders($conn) {
-    $query = "SELECT va.*, o.first_name, o.last_name, v.plate_number 
-              FROM violation_analytics va 
-              JOIN operators o ON va.operator_id = o.operator_id 
-              JOIN vehicles v ON va.vehicle_id = v.vehicle_id 
-              WHERE va.repeat_offender_flag = 1 
-              ORDER BY va.total_violations DESC";
+    $query = "SELECT vh.operator_id, vh.vehicle_id, o.first_name, o.last_name, v.plate_number,
+                     COUNT(vh.violation_id) as total_violations,
+                     MAX(vh.violation_date) as last_violation_date,
+                     'high' as risk_level
+              FROM violation_history vh 
+              JOIN operators o ON vh.operator_id = o.operator_id 
+              JOIN vehicles v ON vh.vehicle_id = v.vehicle_id 
+              GROUP BY vh.operator_id, vh.vehicle_id
+              HAVING COUNT(vh.violation_id) >= 3
+              ORDER BY total_violations DESC";
     $stmt = $conn->prepare($query);
     $stmt->execute();
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 function getEnforcementRecommendations($conn) {
-    $query = "SELECT va.*, o.first_name, o.last_name, v.plate_number, cs.franchise_status 
-              FROM violation_analytics va 
-              JOIN operators o ON va.operator_id = o.operator_id 
-              JOIN vehicles v ON va.vehicle_id = v.vehicle_id 
-              JOIN compliance_status cs ON va.operator_id = cs.operator_id 
-              WHERE va.risk_level IN ('medium', 'high') 
-              ORDER BY va.risk_level DESC, va.total_violations DESC";
+    $query = "SELECT vh.operator_id, vh.vehicle_id, o.first_name, o.last_name, v.plate_number,
+                     cs.franchise_status,
+                     COUNT(vh.violation_id) as total_violations,
+                     CASE 
+                         WHEN COUNT(vh.violation_id) >= 5 THEN 'high'
+                         WHEN COUNT(vh.violation_id) >= 3 THEN 'medium'
+                         ELSE 'low'
+                     END as risk_level
+              FROM violation_history vh 
+              JOIN operators o ON vh.operator_id = o.operator_id 
+              JOIN vehicles v ON vh.vehicle_id = v.vehicle_id 
+              LEFT JOIN compliance_status cs ON vh.operator_id = cs.operator_id 
+              GROUP BY vh.operator_id, vh.vehicle_id
+              HAVING COUNT(vh.violation_id) >= 2
+              ORDER BY total_violations DESC";
     $stmt = $conn->prepare($query);
     $stmt->execute();
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -90,29 +98,36 @@ function getEnforcementRecommendations($conn) {
 function getLinkingStats($conn) {
     $stats = [];
     
-    // Unlinked tickets count
-    $query = "SELECT COUNT(*) as count FROM digitized_tickets WHERE linking_status = 'unlinked'";
+    // Total violations as "unlinked tickets"
+    $query = "SELECT COUNT(*) as count FROM violation_history WHERE settlement_status = 'unpaid'";
     $stmt = $conn->prepare($query);
     $stmt->execute();
     $stats['unlinked_tickets'] = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
     
     // Repeat offenders count
-    $query = "SELECT COUNT(*) as count FROM violation_analytics WHERE repeat_offender_flag = 1";
+    $query = "SELECT COUNT(DISTINCT operator_id) as count FROM (
+                SELECT operator_id FROM violation_history 
+                GROUP BY operator_id HAVING COUNT(*) >= 3
+              ) as repeat_ops";
     $stmt = $conn->prepare($query);
     $stmt->execute();
     $stats['repeat_offenders'] = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
     
     // High risk operators
-    $query = "SELECT COUNT(*) as count FROM violation_analytics WHERE risk_level = 'high'";
+    $query = "SELECT COUNT(DISTINCT operator_id) as count FROM (
+                SELECT operator_id FROM violation_history 
+                GROUP BY operator_id HAVING COUNT(*) >= 5
+              ) as high_risk_ops";
     $stmt = $conn->prepare($query);
     $stmt->execute();
     $stats['high_risk'] = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
     
-    // Average linking confidence
-    $query = "SELECT AVG(linking_confidence) as avg_confidence FROM digitized_tickets WHERE linking_status = 'linked'";
+    // Settlement rate as confidence
+    $query = "SELECT ROUND(AVG(CASE WHEN settlement_status = 'paid' THEN 100 ELSE 0 END), 1) as rate
+              FROM violation_history";
     $stmt = $conn->prepare($query);
     $stmt->execute();
-    $stats['avg_confidence'] = round($stmt->fetch(PDO::FETCH_ASSOC)['avg_confidence'] ?? 0, 1);
+    $stats['avg_confidence'] = $stmt->fetch(PDO::FETCH_ASSOC)['rate'] ?? 0;
     
     return $stats;
 }
@@ -263,10 +278,10 @@ function updateEnforcementRecommendation($conn, $operator_id, $recommendation) {
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 </head>
-<body class="bg-slate-50 dark:bg-slate-900">
+<body style="background-color: #FBFBFB;" class="dark:bg-slate-900">
     <div class="flex h-screen">
         <!-- Sidebar -->
-        <div id="sidebar" class="w-64 bg-white border-r border-slate-200 dark:bg-slate-900 dark:border-slate-700 transform transition-transform duration-300 ease-in-out translate-x-0">
+        <div id="sidebar" class="w-64 bg-white border-r border-gray-200 dark:bg-slate-900 dark:border-slate-700 transform transition-transform duration-300 ease-in-out translate-x-0">
             <div class="p-6">
                 <div class="flex items-center space-x-3">
                     <img src="../../../upload/Caloocan_City.png" alt="Caloocan City Logo" class="w-10 h-10 rounded-xl">
@@ -276,7 +291,7 @@ function updateEnforcementRecommendation($conn, $operator_id, $recommendation) {
                     </div>
                 </div>
             </div>
-            <hr class="border-slate-200 dark:border-slate-700 mx-2">
+            <hr class="border-gray-200 dark:border-slate-700 mx-2">
             
             <!-- Navigation -->
             <nav class="p-4 space-y-2">
@@ -317,7 +332,7 @@ function updateEnforcementRecommendation($conn, $operator_id, $recommendation) {
                 </div>
 
                 <div class="space-y-1">
-                    <button onclick="toggleDropdown('violation-ticketing')" class="w-full flex items-center justify-between p-2 rounded-xl text-orange-600 bg-orange-50 transition-all">
+                    <button onclick="toggleDropdown('violation-ticketing')" class="w-full flex items-center justify-between p-2 rounded-xl transition-all" style="color: #4CAF50; background-color: rgba(76, 175, 80, 0.1);">
                         <div class="flex items-center">
                             <i data-lucide="alert-triangle" class="w-5 h-5 mr-3"></i>
                             <span class="text-sm font-medium">Traffic Violation Ticketing</span>
@@ -326,9 +341,8 @@ function updateEnforcementRecommendation($conn, $operator_id, $recommendation) {
                     </button>
                     <div id="violation-ticketing-menu" class="ml-8 space-y-1">
                         <a href="../../traffic_violation_ticketing/violation_record_management/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Violation Record Management</a>
-                        <a href="../../traffic_violation_ticketing/linking_and_analytics/" class="block p-2 text-sm text-orange-600 bg-orange-100 rounded-lg font-medium">TVT Analytics</a>
+                        <a href="../../traffic_violation_ticketing/linking_and_analytics/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">TVT Analytics</a>
                         <a href="../../traffic_violation_ticketing/revenue_integration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Revenue Integration</a>
-
                     </div>
                 </div>
 
@@ -361,6 +375,23 @@ function updateEnforcementRecommendation($conn, $operator_id, $recommendation) {
                         <a href="../../parking_and_terminal_management/public_transparency/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Public Transparency</a>
                     </div>
                 </div>
+
+                <div class="space-y-1">
+                    <button onclick="toggleDropdown('user-mgmt')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                        <div class="flex items-center">
+                            <i data-lucide="users" class="w-5 h-5 mr-3"></i>
+                            <span class="text-sm font-medium">User Management</span>
+                        </div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="user-mgmt-icon"></i>
+                    </button>
+                    <div id="user-mgmt-menu" class="hidden ml-8 space-y-1">
+                        <a href="../../user_management/account_registry/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Account Registry</a>
+                        <a href="../../user_management/verification_queue/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Verification Queue</a>
+                        <a href="../../user_management/account_maintenance/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Account Maintenance</a>
+                        <a href="../../user_management/roles_and_permissions/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Roles & Permissions</a>
+                        <a href="../../user_management/audit_logs/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Audit Logs</a>
+                    </div>
+                </div>
             </nav>
         </div>
 
@@ -389,19 +420,7 @@ function updateEnforcementRecommendation($conn, $operator_id, $recommendation) {
             <!-- Dashboard Content -->
             <div class="flex-1 p-6 overflow-auto">
                 <!-- Statistics Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    <div class="bg-white rounded-lg shadow p-6">
-                        <div class="flex items-center">
-                            <div class="p-2 bg-yellow-100 rounded-lg">
-                                <i data-lucide="link-2" class="h-6 w-6 text-yellow-600"></i>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600">Unlinked Tickets</p>
-                                <p class="text-2xl font-bold text-gray-900"><?= $stats['unlinked_tickets'] ?></p>
-                            </div>
-                        </div>
-                    </div>
-
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     <div class="bg-white rounded-lg shadow p-6">
                         <div class="flex items-center">
                             <div class="p-2 bg-red-100 rounded-lg">
@@ -441,9 +460,9 @@ function updateEnforcementRecommendation($conn, $operator_id, $recommendation) {
 
                 <!-- Generate Analytics Button -->
                 <div class="mb-6">
-                    <button onclick="generateAnalytics()" class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center">
-                        <i data-lucide="bar-chart" class="h-4 w-4 mr-2"></i>
-                        Generate Analytics
+                    <button onclick="generateAnalytics()" class="px-4 py-2 text-white rounded-lg flex items-center space-x-2 transition-colors" style="background-color: #4CAF50;" onmouseover="this.style.backgroundColor='#45A049'" onmouseout="this.style.backgroundColor='#4CAF50'">
+                        <i data-lucide="bar-chart" class="h-4 w-4"></i>
+                        <span>Generate Analytics</span>
                     </button>
                 </div>
 
@@ -617,6 +636,24 @@ function updateEnforcementRecommendation($conn, $operator_id, $recommendation) {
 
     <script>
         lucide.createIcons();
+        
+        // Show Traffic Violation menu and highlight current page
+        document.addEventListener('DOMContentLoaded', function() {
+            const violationMenu = document.getElementById('violation-ticketing-menu');
+            const violationIcon = document.getElementById('violation-ticketing-icon');
+            if (violationMenu && violationIcon) {
+                violationMenu.classList.remove('hidden');
+                violationIcon.style.transform = 'rotate(180deg)';
+                
+                // Highlight current page
+                const currentLink = violationMenu.querySelector('a[href*="linking_and_analytics"]');
+                if (currentLink) {
+                    currentLink.style.color = '#4CAF50';
+                    currentLink.style.backgroundColor = 'rgba(76, 175, 80, 0.2)';
+                    currentLink.classList.add('font-medium');
+                }
+            }
+        });
 
         function toggleDropdown(menuId) {
             const allMenus = document.querySelectorAll('[id$="-menu"]');
