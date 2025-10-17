@@ -1,9 +1,39 @@
 <?php
 require_once $_SERVER['DOCUMENT_ROOT'] . '/transport_and_mobility_management_system/config/database.php';
-require_once $_SERVER['DOCUMENT_ROOT'] . '/transport_and_mobility_management_system/administrator/puv_database/compliance_status_management/functions.php';
 
 $database = new Database();
 $conn = $database->getConnection();
+
+// Franchise application functions
+function getStatistics($db) {
+    $stats = [];
+    
+    // Total applications
+    $query = "SELECT COUNT(*) as total FROM franchise_applications";
+    $stmt = $db->prepare($query);
+    $stmt->execute();
+    $stats['total_applications'] = $stmt->fetchColumn();
+    
+    // Under review
+    $query = "SELECT COUNT(*) as total FROM franchise_applications WHERE status = 'under_review'";
+    $stmt = $db->prepare($query);
+    $stmt->execute();
+    $stats['under_review'] = $stmt->fetchColumn();
+    
+    // Approved
+    $query = "SELECT COUNT(*) as total FROM franchise_applications WHERE status = 'approved'";
+    $stmt = $db->prepare($query);
+    $stmt->execute();
+    $stats['approved'] = $stmt->fetchColumn();
+    
+    // Average processing time
+    $query = "SELECT AVG(processing_timeline) as avg_time FROM franchise_applications WHERE status = 'approved'";
+    $stmt = $db->prepare($query);
+    $stmt->execute();
+    $stats['avg_processing_time'] = round($stmt->fetchColumn() ?? 15);
+    
+    return $stats;
+}
 
 // Handle filters
 $status_filter = $_GET['status'] ?? '';
@@ -107,7 +137,7 @@ if ($status_filter || $type_filter || $stage_filter || $date_filter) {
                     <button onclick="toggleDropdown('vehicle-inspection')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
                         <div class="flex items-center">
                             <i data-lucide="clipboard-check" class="w-5 h-5 mr-3"></i>
-                            <span class="text-sm font-medium">Vehicle Inspection</span>
+                            <span class="text-sm font-medium">Vehicle Inspection & Registration</span>
                         </div>
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="vehicle-inspection-icon"></i>
                     </button>
@@ -115,6 +145,7 @@ if ($status_filter || $type_filter || $stage_filter || $date_filter) {
                         <a href="../../vehicle_inspection_and_registration/inspection_scheduling/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Inspection Scheduling</a>
                         <a href="../../vehicle_inspection_and_registration/inspection_result_recording/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Result Recording</a>
                         <a href="../../vehicle_inspection_and_registration/inspection_history_tracking/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">History Tracking</a>
+                        <a href="../../vehicle_inspection_and_registration/vehicle_registration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">LTO Registration</a>
                     </div>
                 </div>
 
@@ -148,6 +179,20 @@ if ($status_filter || $type_filter || $stage_filter || $date_filter) {
                         <a href="../../user_management/account_maintenance/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Account Maintenance</a>
                         <a href="../../user_management/roles_and_permissions/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Roles & Permissions</a>
                         <a href="../../user_management/audit_logs/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Audit Logs</a>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <button onclick="toggleDropdown('settings')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                        <div class="flex items-center">
+                            <i data-lucide="settings" class="w-5 h-5 mr-3"></i>
+                            <span class="text-sm font-medium">Settings</span>
+                        </div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="settings-icon"></i>
+                    </button>
+                    <div id="settings-menu" class="hidden ml-8 space-y-1">
+                        <a href="../../settings/system_configuration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">System Configuration</a>
+                        <a href="../../settings/backup_and_restore/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Backup & Restore</a>
                     </div>
                 </div>
             </nav>
@@ -191,7 +236,7 @@ if ($status_filter || $type_filter || $stage_filter || $date_filter) {
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-slate-500 text-sm">Total Applications</p>
-                                <p class="text-2xl font-bold text-blue-600">4</p>
+                                <p class="text-2xl font-bold text-blue-600"><?php echo $stats['total_applications']; ?></p>
                             </div>
                             <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                                 <i data-lucide="file-plus" class="w-6 h-6 text-blue-600"></i>
@@ -202,7 +247,7 @@ if ($status_filter || $type_filter || $stage_filter || $date_filter) {
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-slate-500 text-sm">Under Review</p>
-                                <p class="text-2xl font-bold text-yellow-600">2</p>
+                                <p class="text-2xl font-bold text-yellow-600"><?php echo $stats['under_review']; ?></p>
                             </div>
                             <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
                                 <i data-lucide="clock" class="w-6 h-6 text-yellow-600"></i>
@@ -213,7 +258,7 @@ if ($status_filter || $type_filter || $stage_filter || $date_filter) {
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-slate-500 text-sm">Approved</p>
-                                <p class="text-2xl font-bold text-green-600">1</p>
+                                <p class="text-2xl font-bold text-green-600"><?php echo $stats['approved']; ?></p>
                             </div>
                             <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                                 <i data-lucide="check-circle" class="w-6 h-6 text-green-600"></i>
@@ -224,7 +269,7 @@ if ($status_filter || $type_filter || $stage_filter || $date_filter) {
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-slate-500 text-sm">Avg Processing Time</p>
-                                <p class="text-2xl font-bold text-slate-900 dark:text-white">15 days</p>
+                                <p class="text-2xl font-bold text-slate-900 dark:text-white"><?php echo $stats['avg_processing_time']; ?> days</p>
                             </div>
                             <div class="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
                                 <i data-lucide="trending-up" class="w-6 h-6 text-slate-600"></i>
@@ -344,12 +389,19 @@ if ($status_filter || $type_filter || $stage_filter || $date_filter) {
                                             <button onclick="viewApplication('<?php echo $app['application_id']; ?>')" class="p-1 text-blue-600 hover:bg-blue-100 rounded" title="View Details">
                                                 <i data-lucide="eye" class="w-4 h-4"></i>
                                             </button>
+                                            <?php if ($app['status'] != 'approved'): ?>
                                             <button onclick="openRouteWorkflowModal('<?php echo $app['application_id']; ?>')" class="p-1 text-orange-600 hover:bg-orange-100 rounded" title="Route Workflow">
                                                 <i data-lucide="route" class="w-4 h-4"></i>
                                             </button>
                                             <button onclick="openSetTimelineModal('<?php echo $app['application_id']; ?>')" class="p-1 text-green-600 hover:bg-green-100 rounded" title="Set Timeline">
                                                 <i data-lucide="clock" class="w-4 h-4"></i>
                                             </button>
+                                            <?php endif; ?>
+                                            <?php if ($app['workflow_stage'] == 'approval' && $app['status'] != 'approved'): ?>
+                                            <button onclick="approveApplication('<?php echo $app['application_id']; ?>')" class="p-1 text-green-600 hover:bg-green-100 rounded" title="Approve">
+                                                <i data-lucide="check" class="w-4 h-4"></i>
+                                            </button>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>
@@ -378,7 +430,7 @@ if ($status_filter || $type_filter || $stage_filter || $date_filter) {
                     <div class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Operator</label>
-                            <select id="operatorId" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                            <select id="operatorId" class="w-full border border-gray-300 rounded-lg px-3 py-2" onchange="loadVehicles()">
                                 <option value="">Select Operator</option>
                                 <?php 
                                 $op_query = "SELECT operator_id, first_name, last_name FROM operators ORDER BY first_name";
@@ -390,20 +442,14 @@ if ($status_filter || $type_filter || $stage_filter || $date_filter) {
                                 <?php endforeach; ?>
                             </select>
                         </div>
+
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Vehicle</label>
-                            <select id="vehicleId" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                                <option value="">Select Vehicle</option>
-                                <?php 
-                                $v_query = "SELECT vehicle_id, plate_number, operator_id FROM vehicles ORDER BY plate_number";
-                                $v_stmt = $conn->prepare($v_query);
-                                $v_stmt->execute();
-                                $vehicles = $v_stmt->fetchAll(PDO::FETCH_ASSOC);
-                                foreach ($vehicles as $v): ?>
-                                <option value="<?php echo $v['vehicle_id']; ?>" data-operator="<?php echo $v['operator_id']; ?>"><?php echo $v['plate_number'] . ' (' . $v['vehicle_id'] . ')'; ?></option>
-                                <?php endforeach; ?>
+                            <select id="vehicleId" class="w-full border border-gray-300 rounded-lg px-3 py-2" disabled>
+                                <option value="">Select operator first</option>
                             </select>
                         </div>
+
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Application Type</label>
                             <select id="applicationType" class="w-full border border-gray-300 rounded-lg px-3 py-2">
@@ -414,7 +460,17 @@ if ($status_filter || $type_filter || $stage_filter || $date_filter) {
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Route Requested</label>
-                            <input type="text" id="routeRequested" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="Enter route">
+                            <select id="routeRequested" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                                <option value="">Select Route</option>
+                                <?php 
+                                $route_query = "SELECT route_id, route_name, route_code FROM official_routes WHERE status = 'active' ORDER BY route_name";
+                                $route_stmt = $conn->prepare($route_query);
+                                $route_stmt->execute();
+                                $routes = $route_stmt->fetchAll(PDO::FETCH_ASSOC);
+                                foreach ($routes as $route): ?>
+                                <option value="<?php echo $route['route_name']; ?>"><?php echo $route['route_code'] . ' - ' . $route['route_name']; ?></option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -635,6 +691,102 @@ if ($status_filter || $type_filter || $stage_filter || $date_filter) {
         function closeModal(modalId) {
             document.getElementById(modalId).classList.add('hidden');
         }
+        
+        function loadOperatorVehicles() {
+            const operatorId = document.getElementById('operatorId').value;
+            const vehiclesList = document.getElementById('vehicles-list');
+            const noVehiclesMessage = document.getElementById('no-vehicles-message');
+            const hiddenInput = document.getElementById('vehicleId');
+            
+            if (!operatorId) {
+                vehiclesList.classList.add('hidden');
+                noVehiclesMessage.classList.add('hidden');
+                hiddenInput.value = '';
+                return;
+            }
+            
+            fetch('get_operator_vehicles.php?operator_id=' + operatorId)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.vehicles.length > 0) {
+                        vehiclesList.innerHTML = data.vehicles.map(vehicle => `
+                            <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer" 
+                                 onclick="selectVehicle('${vehicle.vehicle_id}', this)">
+                                <div class="flex items-center space-x-3">
+                                    <input type="radio" name="vehicle_selection" value="${vehicle.vehicle_id}" 
+                                           class="text-green-600 focus:ring-green-500">
+                                    <div>
+                                        <div class="font-medium text-gray-900">${vehicle.plate_number}</div>
+                                        <div class="text-sm text-gray-500">${vehicle.vehicle_type} - ${vehicle.make} ${vehicle.model}</div>
+                                    </div>
+                                </div>
+                                <span class="px-2 py-1 text-xs font-medium rounded-full ${
+                                    vehicle.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                }">${vehicle.status}</span>
+                            </div>
+                        `).join('');
+                        vehiclesList.classList.remove('hidden');
+                        noVehiclesMessage.classList.add('hidden');
+                    } else {
+                        vehiclesList.classList.add('hidden');
+                        noVehiclesMessage.classList.remove('hidden');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading vehicles:', error);
+                    vehiclesList.classList.add('hidden');
+                    noVehiclesMessage.classList.remove('hidden');
+                });
+        }
+        
+        function selectVehicle(vehicleId, element) {
+            document.getElementById('vehicleId').value = vehicleId;
+            element.querySelector('input[type="radio"]').checked = true;
+            
+            // Remove selection from other vehicles
+            document.querySelectorAll('#vehicles-list > div').forEach(div => {
+                div.classList.remove('bg-green-50', 'border-green-300');
+                div.classList.add('border-gray-200');
+            });
+            
+            // Highlight selected vehicle
+            element.classList.add('bg-green-50', 'border-green-300');
+            element.classList.remove('border-gray-200');
+        }
+
+        function loadVehicles() {
+            const operatorId = document.getElementById('operatorId').value;
+            const vehicleSelect = document.getElementById('vehicleId');
+            
+            if (!operatorId) {
+                vehicleSelect.innerHTML = '<option value="">Select operator first</option>';
+                vehicleSelect.disabled = true;
+                return;
+            }
+            
+            vehicleSelect.innerHTML = '<option value="">Loading vehicles...</option>';
+            vehicleSelect.disabled = true;
+            
+            fetch(`get_operator_vehicles.php?operator_id=${operatorId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.vehicles.length > 0) {
+                        vehicleSelect.innerHTML = '<option value="">Select Vehicle</option>' +
+                            data.vehicles.map(vehicle => 
+                                `<option value="${vehicle.vehicle_id}">${vehicle.plate_number} - ${vehicle.vehicle_type} (${vehicle.make} ${vehicle.model})</option>`
+                            ).join('');
+                        vehicleSelect.disabled = false;
+                    } else {
+                        vehicleSelect.innerHTML = '<option value="">No vehicles found</option>';
+                        vehicleSelect.disabled = true;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading vehicles:', error);
+                    vehicleSelect.innerHTML = '<option value="">Error loading vehicles</option>';
+                    vehicleSelect.disabled = true;
+                });
+        }
 
         // Create new application
         function createApplication() {
@@ -644,7 +796,7 @@ if ($status_filter || $type_filter || $stage_filter || $date_filter) {
             const routeRequested = document.getElementById('routeRequested').value;
             
             if (!operatorId || !vehicleId || !routeRequested) {
-                alert('Please fill in all required fields');
+                alert('Please select an operator, vehicle, and route');
                 return;
             }
             
@@ -742,6 +894,32 @@ if ($status_filter || $type_filter || $stage_filter || $date_filter) {
                 console.error('Timeline error:', error);
                 alert('Error updating timeline');
             });
+        }
+        
+        function approveApplication(applicationId) {
+            if (confirm('Are you sure you want to approve this application?')) {
+                fetch('simple_handler.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({
+                        action: 'approve_application',
+                        application_id: applicationId
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Application approved successfully!');
+                        location.reload();
+                    } else {
+                        alert('Failed to approve application');
+                    }
+                })
+                .catch(error => {
+                    console.error('Approve error:', error);
+                    alert('Error approving application');
+                });
+            }
         }
         
         function viewApplication(applicationId) {

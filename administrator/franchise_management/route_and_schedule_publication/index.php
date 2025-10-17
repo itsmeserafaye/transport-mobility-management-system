@@ -5,7 +5,32 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/transport_and_mobility_management_sys
 $database = new Database();
 $conn = $database->getConnection();
 
-$stats = getStatistics($conn);
+// Route and schedule statistics functions
+function getRouteScheduleStatistics($db) {
+    $stats = [];
+    
+    // Official routes
+    $query = "SELECT COUNT(*) as total FROM official_routes WHERE status = 'active'";
+    $stmt = $db->prepare($query);
+    $stmt->execute();
+    $stats['official_routes'] = $stmt->fetchColumn();
+    
+    // Active schedules
+    $query = "SELECT COUNT(*) as total FROM route_schedules WHERE status = 'active'";
+    $stmt = $db->prepare($query);
+    $stmt->execute();
+    $stats['active_schedules'] = $stmt->fetchColumn();
+    
+    // Average travel time
+    $query = "SELECT AVG(estimated_travel_time) as avg_time FROM official_routes WHERE status = 'active'";
+    $stmt = $db->prepare($query);
+    $stmt->execute();
+    $stats['avg_travel_time'] = round($stmt->fetchColumn() ?? 0);
+    
+    return $stats;
+}
+
+$stats = getRouteScheduleStatistics($conn);
 $routes = getRoutes($conn);
 $schedules = getRouteSchedules($conn);
 ?>
@@ -96,7 +121,7 @@ $schedules = getRouteSchedules($conn);
                     <button onclick="toggleDropdown('vehicle-inspection')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
                         <div class="flex items-center">
                             <i data-lucide="clipboard-check" class="w-5 h-5 mr-3"></i>
-                            <span class="text-sm font-medium">Vehicle Inspection</span>
+                            <span class="text-sm font-medium">Vehicle Inspection & Registration</span>
                         </div>
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="vehicle-inspection-icon"></i>
                     </button>
@@ -104,6 +129,7 @@ $schedules = getRouteSchedules($conn);
                         <a href="../../vehicle_inspection_and_registration/inspection_scheduling/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Inspection Scheduling</a>
                         <a href="../../vehicle_inspection_and_registration/inspection_result_recording/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Result Recording</a>
                         <a href="../../vehicle_inspection_and_registration/inspection_history_tracking/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">History Tracking</a>
+                        <a href="../../vehicle_inspection_and_registration/vehicle_registration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">LTO Registration</a>
                     </div>
                 </div>
 
@@ -132,11 +158,25 @@ $schedules = getRouteSchedules($conn);
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="user-mgmt-icon"></i>
                     </button>
                     <div id="user-mgmt-menu" class="hidden ml-8 space-y-1">
-                        <a href="../../user_management/account_registry/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Account Registry</a>
-                        <a href="../../user_management/verification_queue/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Verification Queue</a>
-                        <a href="../../user_management/account_maintenance/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Account Maintenance</a>
-                        <a href="../../user_management/roles_and_permissions/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Roles & Permissions</a>
-                        <a href="../../user_management/audit_logs/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Audit Logs</a>
+                        <a href="../../user_management/account_registry/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Account Registry</a>
+                        <a href="../../user_management/verification_queue/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Verification Queue</a>
+                        <a href="../../user_management/account_maintenance/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Account Maintenance</a>
+                        <a href="../../user_management/roles_and_permissions/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Roles & Permissions</a>
+                        <a href="../../user_management/audit_logs/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Audit Logs</a>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <button onclick="toggleDropdown('settings')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                        <div class="flex items-center">
+                            <i data-lucide="settings" class="w-5 h-5 mr-3"></i>
+                            <span class="text-sm font-medium">Settings</span>
+                        </div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="settings-icon"></i>
+                    </button>
+                    <div id="settings-menu" class="hidden ml-8 space-y-1">
+                        <a href="../../settings/system_configuration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">System Configuration</a>
+                        <a href="../../settings/backup_and_restore/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Backup & Restore</a>
                     </div>
                 </div>
             </nav>
@@ -180,7 +220,7 @@ $schedules = getRouteSchedules($conn);
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-slate-500 text-sm">Official Routes</p>
-                                <p class="text-2xl font-bold text-blue-600">5</p>
+                                <p class="text-2xl font-bold text-blue-600"><?php echo $stats['official_routes']; ?></p>
                             </div>
                             <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                                 <i data-lucide="map" class="w-6 h-6 text-blue-600"></i>
@@ -191,29 +231,19 @@ $schedules = getRouteSchedules($conn);
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-slate-500 text-sm">Active Schedules</p>
-                                <p class="text-2xl font-bold text-green-600">5</p>
+                                <p class="text-2xl font-bold text-green-600"><?php echo $stats['active_schedules']; ?></p>
                             </div>
                             <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                                 <i data-lucide="clock" class="w-6 h-6 text-green-600"></i>
                             </div>
                         </div>
                     </div>
-                    <div class="bg-white p-6 rounded-xl border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-slate-500 text-sm">Published to Citizen</p>
-                                <p class="text-2xl font-bold text-orange-600">3</p>
-                            </div>
-                            <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                                <i data-lucide="globe" class="w-6 h-6 text-orange-600"></i>
-                            </div>
-                        </div>
-                    </div>
+
                     <div class="bg-white p-6 rounded-xl border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-slate-500 text-sm">Avg Travel Time</p>
-                                <p class="text-2xl font-bold text-slate-900 dark:text-white">31 min</p>
+                                <p class="text-2xl font-bold text-slate-900 dark:text-white"><?php echo $stats['avg_travel_time']; ?> min</p>
                             </div>
                             <div class="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
                                 <i data-lucide="trending-up" class="w-6 h-6 text-slate-600"></i>
@@ -705,34 +735,30 @@ $schedules = getRouteSchedules($conn);
                             <div class="grid grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Route</label>
-                                    <select id="routeSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg" ${isView ? 'disabled' : 'required'}>
+                                    <select id="routeSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg" ${isView ? 'disabled' : 'required'} onchange="loadOperatorsByRoute()">
                                         <option value="">Select Route</option>
-                                        ${routes.map(route => `<option value="${route.route_id}" ${scheduleData?.route_id === route.route_id ? 'selected' : ''}>${route.route_name} (${route.route_code})</option>`).join('')}
+                                        ${routes.map(route => `<option value="${route.route_id}" data-route-name="${route.route_name}" ${scheduleData?.route_id === route.route_id ? 'selected' : ''}>${route.route_name} (${route.route_code})</option>`).join('')}
                                     </select>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Operator</label>
                                     <select id="operatorSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg" ${isView ? 'disabled' : 'required'} onchange="loadVehicles()">
-                                        <option value="">Select Operator</option>
-                                        ${operators.map(op => `<option value="${op.operator_id}" ${scheduleData?.operator_id === op.operator_id ? 'selected' : ''}>${op.operator_name}</option>`).join('')}
+                                        <option value="">Select Route First</option>
                                     </select>
                                 </div>
                             </div>
-                            <div class="grid grid-cols-2 gap-4 mb-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Vehicle</label>
-                                    <select id="vehicleSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg" ${isView ? 'disabled' : 'required'}>
-                                        <option value="">Select Vehicle</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Operating Days</label>
-                                    <select id="operatingDays" class="w-full px-3 py-2 border border-gray-300 rounded-lg" ${isView ? 'disabled' : 'required'}>
-                                        <option value="daily" ${scheduleData?.operating_days === 'daily' ? 'selected' : ''}>Daily</option>
-                                        <option value="weekdays" ${scheduleData?.operating_days === 'weekdays' ? 'selected' : ''}>Weekdays</option>
-                                        <option value="weekends" ${scheduleData?.operating_days === 'weekends' ? 'selected' : ''}>Weekends</option>
-                                    </select>
-                                </div>
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Vehicle</label>
+                                <input type="text" id="vehicleDisplay" class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly placeholder="Select operator first">
+                                <input type="hidden" id="vehicleId" name="vehicle_id">
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Operating Days</label>
+                                <select id="operatingDays" class="w-full px-3 py-2 border border-gray-300 rounded-lg" ${isView ? 'disabled' : 'required'}>
+                                    <option value="daily" ${scheduleData?.operating_days === 'daily' ? 'selected' : ''}>Daily</option>
+                                    <option value="weekdays" ${scheduleData?.operating_days === 'weekdays' ? 'selected' : ''}>Weekdays</option>
+                                    <option value="weekends" ${scheduleData?.operating_days === 'weekends' ? 'selected' : ''}>Weekends</option>
+                                </select>
                             </div>
                             <div class="grid grid-cols-3 gap-4 mb-4">
                                 <div>
@@ -763,9 +789,16 @@ $schedules = getRouteSchedules($conn);
                 document.body.appendChild(modal);
                 lucide.createIcons();
                 
-                // Load vehicles if operator is selected
+                // Load operators and vehicles if data exists
+                if (scheduleData?.route_id) {
+                    const routeSelect = document.getElementById('routeSelect');
+                    const selectedOption = routeSelect.options[routeSelect.selectedIndex];
+                    const routeName = selectedOption.getAttribute('data-route-name');
+                    loadOperatorsByRoute(routeName, scheduleData.operator_id);
+                }
                 if (scheduleData?.operator_id) {
-                    loadVehicles(scheduleData.vehicle_id);
+                    document.getElementById('vehicleDisplay').value = `${scheduleData.plate_number} - ${scheduleData.vehicle_type}`;
+                    document.getElementById('vehicleId').value = scheduleData.vehicle_id;
                 }
                 
                 if (!isView) {
@@ -775,7 +808,7 @@ $schedules = getRouteSchedules($conn);
                             action: mode === 'add' ? 'add_schedule' : 'edit_schedule',
                             route_id: document.getElementById('routeSelect').value,
                             operator_id: document.getElementById('operatorSelect').value,
-                            vehicle_id: document.getElementById('vehicleSelect').value,
+                            vehicle_id: document.getElementById('vehicleId').value,
                             departure_time: document.getElementById('departureTime').value,
                             arrival_time: document.getElementById('arrivalTime').value,
                             frequency_minutes: document.getElementById('frequency').value,
@@ -809,27 +842,107 @@ $schedules = getRouteSchedules($conn);
             });
         }
         
-        function loadVehicles(selectedVehicleId = null) {
+        function loadVehicles() {
             const operatorId = document.getElementById('operatorSelect').value;
-            const vehicleSelect = document.getElementById('vehicleSelect');
+            const routeSelect = document.getElementById('routeSelect');
+            const vehicleDisplay = document.getElementById('vehicleDisplay');
+            const vehicleId = document.getElementById('vehicleId');
             
             if (!operatorId) {
-                vehicleSelect.innerHTML = '<option value="">Select Vehicle</option>';
+                vehicleDisplay.value = 'Select operator first';
+                vehicleId.value = '';
                 return;
             }
             
-            fetch(`handler.php?action=get_vehicles&operator_id=${operatorId}`)
+            const selectedOption = routeSelect.options[routeSelect.selectedIndex];
+            const routeName = selectedOption.getAttribute('data-route-name');
+            
+            fetch(`handler.php?action=get_vehicles&operator_id=${operatorId}&route_name=${encodeURIComponent(routeName)}`)
                 .then(response => response.json())
                 .then(data => {
-                    if (data.success) {
-                        vehicleSelect.innerHTML = '<option value="">Select Vehicle</option>' +
-                            data.data.map(vehicle => 
-                                `<option value="${vehicle.vehicle_id}" ${selectedVehicleId === vehicle.vehicle_id ? 'selected' : ''}>${vehicle.plate_number} - ${vehicle.vehicle_type}</option>`
-                            ).join('');
+                    if (data.success && data.data.length > 0) {
+                        if (data.data.length === 1) {
+                            // Auto-select if only one vehicle
+                            const vehicle = data.data[0];
+                            vehicleDisplay.value = `${vehicle.plate_number} - ${vehicle.vehicle_type}`;
+                            vehicleId.value = vehicle.vehicle_id;
+                        } else {
+                            // Show dropdown if multiple vehicles
+                            showVehicleDropdown(data.data);
+                        }
+                    } else {
+                        vehicleDisplay.value = 'No approved vehicles for this route';
+                        vehicleId.value = '';
                     }
                 })
                 .catch(error => {
                     console.error('Error loading vehicles:', error);
+                    vehicleDisplay.value = 'Error loading vehicle';
+                    vehicleId.value = '';
+                });
+        }
+        
+        function showVehicleDropdown(vehicles) {
+            const vehicleDisplay = document.getElementById('vehicleDisplay');
+            const vehicleId = document.getElementById('vehicleId');
+            
+            // Create dropdown
+            const dropdown = document.createElement('select');
+            dropdown.className = 'w-full px-3 py-2 border border-gray-300 rounded-lg';
+            dropdown.innerHTML = '<option value="">Select Vehicle</option>' +
+                vehicles.map(vehicle => 
+                    `<option value="${vehicle.vehicle_id}">${vehicle.plate_number} - ${vehicle.vehicle_type}</option>`
+                ).join('');
+            
+            dropdown.addEventListener('change', function() {
+                const selectedVehicle = vehicles.find(v => v.vehicle_id === this.value);
+                if (selectedVehicle) {
+                    vehicleDisplay.value = `${selectedVehicle.plate_number} - ${selectedVehicle.vehicle_type}`;
+                    vehicleId.value = selectedVehicle.vehicle_id;
+                    this.remove();
+                    vehicleDisplay.style.display = 'block';
+                }
+            });
+            
+            // Hide display input and show dropdown
+            vehicleDisplay.style.display = 'none';
+            vehicleDisplay.parentNode.insertBefore(dropdown, vehicleDisplay.nextSibling);
+        }
+        
+        function loadOperatorsByRoute(routeName = null, selectedOperatorId = null) {
+            const routeSelect = document.getElementById('routeSelect');
+            const operatorSelect = document.getElementById('operatorSelect');
+            
+            if (!routeSelect.value) {
+                operatorSelect.innerHTML = '<option value="">Select Route First</option>';
+                document.getElementById('vehicleDisplay').value = 'Select operator first';
+                document.getElementById('vehicleId').value = '';
+                return;
+            }
+            
+            const selectedOption = routeSelect.options[routeSelect.selectedIndex];
+            const targetRouteName = routeName || selectedOption.getAttribute('data-route-name');
+            
+            fetch(`handler.php?action=get_operators&route_name=${encodeURIComponent(targetRouteName)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data.length > 0) {
+                        operatorSelect.innerHTML = '<option value="">Select Operator</option>' +
+                            data.data.map(op => 
+                                `<option value="${op.operator_id}" ${selectedOperatorId === op.operator_id ? 'selected' : ''}>${op.operator_name}</option>`
+                            ).join('');
+                        
+                        document.getElementById('vehicleDisplay').value = 'Select operator first';
+                        document.getElementById('vehicleId').value = '';
+                    } else {
+                        operatorSelect.innerHTML = '<option value="">No approved operators for this route</option>';
+                        document.getElementById('vehicleDisplay').value = 'No approved operators';
+                        document.getElementById('vehicleId').value = '';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading operators:', error);
+                    operatorSelect.innerHTML = '<option value="">Error loading operators</option>';
                 });
         }
         

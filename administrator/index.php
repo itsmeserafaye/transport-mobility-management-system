@@ -229,7 +229,7 @@ $moduleStats = getModuleStats($conn);
                     <button onclick="toggleDropdown('vehicle-inspection')" class="w-full flex items-center justify-between p-2 rounded-xl text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all">
                         <div class="flex items-center">
                             <i data-lucide="clipboard-check" class="w-5 h-5 mr-3"></i>
-                            <span class="text-sm font-medium">Vehicle Inspection</span>
+                            <span class="text-sm font-medium">Vehicle Inspection & Registration</span>
                         </div>
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="vehicle-inspection-icon"></i>
                     </button>
@@ -237,6 +237,7 @@ $moduleStats = getModuleStats($conn);
                         <a href="vehicle_inspection_and_registration/inspection_scheduling/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Inspection Scheduling</a>
                         <a href="vehicle_inspection_and_registration/inspection_result_recording/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Result Recording</a>
                         <a href="vehicle_inspection_and_registration/inspection_history_tracking/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">History Tracking</a>
+                        <a href="vehicle_inspection_and_registration/vehicle_registration/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Vehicle Registration</a>
                     </div>
                 </div>
 
@@ -269,6 +270,20 @@ $moduleStats = getModuleStats($conn);
                         <a href="user_management/account_maintenance/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Account Maintenance</a>
                         <a href="user_management/roles_and_permissions/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Roles & Permissions</a>
                         <a href="user_management/audit_logs/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Audit Logs</a>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <button onclick="toggleDropdown('settings')" class="w-full flex items-center justify-between p-2 rounded-xl text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all">
+                        <div class="flex items-center">
+                            <i data-lucide="settings" class="w-5 h-5 mr-3"></i>
+                            <span class="text-sm font-medium">Settings</span>
+                        </div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="settings-icon"></i>
+                    </button>
+                    <div id="settings-menu" class="hidden ml-8 space-y-1">
+                        <a href="settings/general_settings/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">General Settings</a>
+                        <a href="settings/security_settings/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Security Settings</a>
                     </div>
                 </div>
             </nav>
@@ -474,10 +489,10 @@ $moduleStats = getModuleStats($conn);
 
                 </div>
 
-                <!-- Vehicle Inspection Module -->
+                <!-- Vehicle Inspection & Registration Module -->
                 <div class="bg-white rounded-lg shadow-md p-6">
                     <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-semibold text-gray-800">Vehicle Inspection</h3>
+                        <h3 class="text-lg font-semibold text-gray-800">Vehicle Inspection & Registration</h3>
                         <i data-lucide="clipboard-check" class="w-6 h-6" style="color: #4A90E2;"></i>
                     </div>
                     <div class="space-y-3">

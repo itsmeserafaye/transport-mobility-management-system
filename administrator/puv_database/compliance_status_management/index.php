@@ -93,7 +93,7 @@ $compliance = getComplianceStatus($conn);
                     <button onclick="toggleDropdown('vehicle-inspection')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
                         <div class="flex items-center">
                             <i data-lucide="clipboard-check" class="w-5 h-5 mr-3"></i>
-                            <span class="text-sm font-medium">Vehicle Inspection</span>
+                            <span class="text-sm font-medium">Vehicle Inspection & Registration</span>
                         </div>
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="vehicle-inspection-icon"></i>
                     </button>
@@ -101,6 +101,7 @@ $compliance = getComplianceStatus($conn);
                         <a href="../../vehicle_inspection_and_registration/inspection_scheduling/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Inspection Scheduling</a>
                         <a href="../../vehicle_inspection_and_registration/inspection_result_recording/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Result Recording</a>
                         <a href="../../vehicle_inspection_and_registration/inspection_history_tracking/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">History Tracking</a>
+                        <a href="../../vehicle_inspection_and_registration/vehicle_registration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">LTO Registration</a>
                     </div>
                 </div>
 
@@ -133,6 +134,20 @@ $compliance = getComplianceStatus($conn);
                         <a href="../../user_management/account_maintenance/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Account Maintenance</a>
                         <a href="../../user_management/roles_and_permissions/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Roles & Permissions</a>
                         <a href="../../user_management/audit_logs/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Audit Logs</a>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <button onclick="toggleDropdown('settings')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                        <div class="flex items-center">
+                            <i data-lucide="settings" class="w-5 h-5 mr-3"></i>
+                            <span class="text-sm font-medium">Settings</span>
+                        </div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="settings-icon"></i>
+                    </button>
+                    <div id="settings-menu" class="hidden ml-8 space-y-1">
+                        <a href="../../settings/system_configuration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">System Configuration</a>
+                        <a href="../../settings/backup_and_restore/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Backup & Restore</a>
                     </div>
                 </div>
             </nav>
@@ -223,11 +238,6 @@ $compliance = getComplianceStatus($conn);
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-bold text-slate-900 dark:text-white">Compliance Status Management</h2>
                     <div class="flex space-x-3">
-                        <button onclick="updateScores()" class="px-4 py-2 text-white rounded-lg flex items-center space-x-2 transition-colors" style="background-color: #4CAF50;" onmouseover="this.style.backgroundColor='#45A049'" onmouseout="this.style.backgroundColor='#4CAF50'">
-                            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                            <span>Update Scores</span>
-                        </button>
-
                         <div class="relative">
                             <button onclick="toggleExportMenu()" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 flex items-center space-x-2">
                                 <i data-lucide="download" class="w-4 h-4"></i>
@@ -352,100 +362,6 @@ $compliance = getComplianceStatus($conn);
                                     </td>
                                 </tr>
                                 <?php endforeach; ?>
-                                <tr class="hover:bg-slate-50 dark:hover:bg-slate-700">
-                                    <td class="px-6 py-4">
-                                        <div class="flex items-center">
-                                            <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                                                <span class="text-purple-600 font-medium">MS</span>
-                                            </div>
-                                            <div class="ml-4">
-                                                <div class="text-sm font-medium text-slate-900 dark:text-white">Maria Santos</div>
-                                                <div class="text-sm text-slate-500">XYZ-5678 | OP-2024-002</div>
-                                                <div class="text-xs text-slate-400">Bus - Isuzu Elf</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4">
-                                        <span class="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">Expired</span>
-                                        <div class="text-xs text-red-500 mt-1">Expired: Jan 2024</div>
-                                    </td>
-                                    <td class="px-6 py-4">
-                                        <span class="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">Overdue</span>
-                                        <div class="text-xs text-red-500 mt-1">Due: Feb 2024</div>
-                                    </td>
-                                    <td class="px-6 py-4">
-                                        <div class="text-sm text-slate-900 dark:text-white">5 violations</div>
-                                        <div class="text-xs text-red-500">Last: Jan 2024</div>
-                                    </td>
-                                    <td class="px-6 py-4">
-                                        <div class="flex items-center">
-                                            <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                                                <div class="bg-red-500 h-2 rounded-full" style="width: 65%"></div>
-                                            </div>
-                                            <span class="text-sm font-medium text-red-600">65%</span>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4">
-                                        <div class="flex space-x-2">
-                                            <button class="p-1 text-blue-600 hover:bg-blue-100 rounded">
-                                                <i data-lucide="eye" class="w-4 h-4"></i>
-                                            </button>
-                                            <button class="p-1 text-orange-600 hover:bg-orange-100 rounded">
-                                                <i data-lucide="edit" class="w-4 h-4"></i>
-                                            </button>
-                                            <button class="p-1 text-red-600 hover:bg-red-100 rounded">
-                                                <i data-lucide="alert-triangle" class="w-4 h-4"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr class="hover:bg-slate-50 dark:hover:bg-slate-700">
-                                    <td class="px-6 py-4">
-                                        <div class="flex items-center">
-                                            <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                                                <span class="text-green-600 font-medium">RG</span>
-                                            </div>
-                                            <div class="ml-4">
-                                                <div class="text-sm font-medium text-slate-900 dark:text-white">Roberto Garcia</div>
-                                                <div class="text-sm text-slate-500">DEF-9012 | OP-2024-003</div>
-                                                <div class="text-xs text-slate-400">Tricycle - Honda TMX</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4">
-                                        <span class="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">Pending</span>
-                                        <div class="text-xs text-slate-500 mt-1">Applied: Feb 2024</div>
-                                    </td>
-                                    <td class="px-6 py-4">
-                                        <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Pending</span>
-                                        <div class="text-xs text-slate-500 mt-1">Scheduled: Mar 15</div>
-                                    </td>
-                                    <td class="px-6 py-4">
-                                        <div class="text-sm text-slate-900 dark:text-white">0 violations</div>
-                                        <div class="text-xs text-green-500">Clean record</div>
-                                    </td>
-                                    <td class="px-6 py-4">
-                                        <div class="flex items-center">
-                                            <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                                                <div class="bg-blue-500 h-2 rounded-full" style="width: 85%"></div>
-                                            </div>
-                                            <span class="text-sm font-medium text-blue-600">85%</span>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4">
-                                        <div class="flex space-x-2">
-                                            <button class="p-1 text-blue-600 hover:bg-blue-100 rounded">
-                                                <i data-lucide="eye" class="w-4 h-4"></i>
-                                            </button>
-                                            <button class="p-1 text-orange-600 hover:bg-orange-100 rounded">
-                                                <i data-lucide="edit" class="w-4 h-4"></i>
-                                            </button>
-                                            <button class="p-1 text-green-600 hover:bg-green-100 rounded">
-                                                <i data-lucide="check" class="w-4 h-4"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -804,27 +720,7 @@ $compliance = getComplianceStatus($conn);
             });
         }
         
-        function updateScores() {
-            if (confirm('Update all compliance scores based on current status?')) {
-                fetch('update_scores.php', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                    body: new URLSearchParams({action: 'update_scores'})
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Compliance scores updated successfully!');
-                        location.reload();
-                    } else {
-                        alert('Error updating scores: ' + (data.message || 'Unknown error'));
-                    }
-                })
-                .catch(error => {
-                    alert('Error updating scores');
-                });
-            }
-        }
+
         
         function openUpdateModal() {
             const modal = document.createElement('div');

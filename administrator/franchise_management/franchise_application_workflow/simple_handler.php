@@ -59,6 +59,11 @@ try {
                 $application_type = $_POST['application_type'] ?? 'new';
                 $route_requested = $_POST['route_requested'] ?? '';
                 
+                if (!$vehicle_id) {
+                    echo json_encode(['success' => false, 'message' => 'Vehicle ID is required']);
+                    break;
+                }
+                
                 $application_id = 'FA-' . date('Y') . '-' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
                 
                 $query = "INSERT INTO franchise_applications 
@@ -114,6 +119,63 @@ try {
                 $success = $stmt->execute([$timeline, $application_id]);
                 
                 echo json_encode(['success' => $success]);
+                break;
+                
+            case 'approve_application':
+                // Approve application and create franchise
+                $application_id = $_POST['application_id'] ?? '';
+                
+                $db->beginTransaction();
+                
+                try {
+                    // Get application details
+                    $app_query = "SELECT * FROM franchise_applications WHERE application_id = ?";
+                    $app_stmt = $db->prepare($app_query);
+                    $app_stmt->execute([$application_id]);
+                    $app = $app_stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if (!$app) {
+                        throw new Exception('Application not found');
+                    }
+                    
+                    // Update application status
+                    $update_query = "UPDATE franchise_applications SET 
+                                     status = 'approved',
+                                     workflow_stage = 'completed',
+                                     updated_at = CURRENT_TIMESTAMP
+                                     WHERE application_id = ?";
+                    $update_stmt = $db->prepare($update_query);
+                    $update_stmt->execute([$application_id]);
+                    
+                    // Create franchise record
+                    $franchise_id = 'FR-' . date('Y') . '-' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
+                    $franchise_number = 'FN-' . strtoupper(substr($app['route_requested'], 0, 3)) . '-' . date('Y') . '-' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
+                    
+                    $franchise_query = "INSERT INTO franchise_records 
+                                        (franchise_id, operator_id, vehicle_id, franchise_number, 
+                                         issue_date, expiry_date, route_assigned, status) 
+                                        VALUES (?, ?, ?, ?, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 1 YEAR), ?, 'valid')";
+                    $franchise_stmt = $db->prepare($franchise_query);
+                    $franchise_stmt->execute([$franchise_id, $app['operator_id'], $app['vehicle_id'], $franchise_number, $app['route_requested']]);
+                    
+                    // Create lifecycle record
+                    $lifecycle_id = 'LC-' . date('Y') . '-' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
+                    $lifecycle_query = "INSERT INTO franchise_lifecycle 
+                                        (lifecycle_id, franchise_id, operator_id, vehicle_id, 
+                                         lifecycle_stage, stage_date, expiry_date, renewal_due_date, 
+                                         action_required, processed_by) 
+                                        VALUES (?, ?, ?, ?, 'active', CURDATE(), DATE_ADD(CURDATE(), INTERVAL 1 YEAR), 
+                                                DATE_SUB(DATE_ADD(CURDATE(), INTERVAL 1 YEAR), INTERVAL 3 MONTH), 'none', 'System')";
+                    $lifecycle_stmt = $db->prepare($lifecycle_query);
+                    $lifecycle_stmt->execute([$lifecycle_id, $franchise_id, $app['operator_id'], $app['vehicle_id']]);
+                    
+                    $db->commit();
+                    echo json_encode(['success' => true, 'franchise_id' => $franchise_id]);
+                    
+                } catch (Exception $e) {
+                    $db->rollBack();
+                    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+                }
                 break;
                 
             default:

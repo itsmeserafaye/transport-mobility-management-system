@@ -120,9 +120,9 @@ function getViolationRecordStats($conn) {
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="violation-ticketing-icon" style="transform: rotate(180deg);"></i>
                     </button>
                     <div id="violation-ticketing-menu" class="ml-8 space-y-1">
-                        <a href="../../traffic_violation_ticketing/violation_record_management/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Violation Record Management</a>
-                        <a href="../../traffic_violation_ticketing/linking_and_analytics/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">TVT Analytics</a>
-                        <a href="../../traffic_violation_ticketing/revenue_integration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Revenue Integration</a>
+                        <a href="../violation_record_management/" class="block p-2 text-sm rounded-lg font-medium" style="color: #4CAF50; background-color: rgba(76, 175, 80, 0.2);">Violation Record Management</a>
+                        <a href="../linking_and_analytics/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">TVT Analytics</a>
+                        <a href="../revenue_integration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Revenue Integration</a>
                     </div>
                 </div>
 
@@ -131,7 +131,7 @@ function getViolationRecordStats($conn) {
                     <button onclick="toggleDropdown('vehicle-inspection')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
                         <div class="flex items-center">
                             <i data-lucide="clipboard-check" class="w-5 h-5 mr-3"></i>
-                            <span class="text-sm font-medium">Vehicle Inspection</span>
+                            <span class="text-sm font-medium">Vehicle Inspection & Registration</span>
                         </div>
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="vehicle-inspection-icon"></i>
                     </button>
@@ -139,6 +139,7 @@ function getViolationRecordStats($conn) {
                         <a href="../../vehicle_inspection_and_registration/inspection_scheduling/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Inspection Scheduling</a>
                         <a href="../../vehicle_inspection_and_registration/inspection_result_recording/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Result Recording</a>
                         <a href="../../vehicle_inspection_and_registration/inspection_history_tracking/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">History Tracking</a>
+                        <a href="../../vehicle_inspection_and_registration/vehicle_registration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">LTO Registration</a>
                     </div>
                 </div>
 
@@ -167,11 +168,25 @@ function getViolationRecordStats($conn) {
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="user-mgmt-icon"></i>
                     </button>
                     <div id="user-mgmt-menu" class="hidden ml-8 space-y-1">
-                        <a href="../../user_management/account_registry/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Account Registry</a>
-                        <a href="../../user_management/verification_queue/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Verification Queue</a>
-                        <a href="../../user_management/account_maintenance/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Account Maintenance</a>
-                        <a href="../../user_management/roles_and_permissions/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Roles & Permissions</a>
-                        <a href="../../user_management/audit_logs/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Audit Logs</a>
+                        <a href="../../user_management/account_registry/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Account Registry</a>
+                        <a href="../../user_management/verification_queue/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Verification Queue</a>
+                        <a href="../../user_management/account_maintenance/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Account Maintenance</a>
+                        <a href="../../user_management/roles_and_permissions/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Roles & Permissions</a>
+                        <a href="../../user_management/audit_logs/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Audit Logs</a>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <button onclick="toggleDropdown('settings')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                        <div class="flex items-center">
+                            <i data-lucide="settings" class="w-5 h-5 mr-3"></i>
+                            <span class="text-sm font-medium">Settings</span>
+                        </div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="settings-icon"></i>
+                    </button>
+                    <div id="settings-menu" class="hidden ml-8 space-y-1">
+                        <a href="../../settings/system_configuration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">System Configuration</a>
+                        <a href="../../settings/backup_and_restore/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Backup & Restore</a>
                     </div>
                 </div>
             </nav>
@@ -344,6 +359,11 @@ function getViolationRecordStats($conn) {
                                             <button onclick="openEditModal('<?php echo $violation['violation_id']; ?>')" class="p-1 text-orange-600 hover:bg-orange-100 rounded" title="Edit">
                                                 <i data-lucide="edit" class="w-4 h-4"></i>
                                             </button>
+                                            <?php if ($violation['settlement_status'] !== 'paid'): ?>
+                                            <button onclick="markAsPaid('<?php echo $violation['violation_id']; ?>')" class="p-1 text-green-600 hover:bg-green-100 rounded" title="Mark as Paid">
+                                                <i data-lucide="credit-card" class="w-4 h-4"></i>
+                                            </button>
+                                            <?php endif; ?>
                                             <button onclick="deleteViolation('<?php echo $violation['violation_id']; ?>')" class="p-1 text-red-600 hover:bg-red-100 rounded" title="Delete">
                                                 <i data-lucide="trash-2" class="w-4 h-4"></i>
                                             </button>
@@ -372,7 +392,7 @@ function getViolationRecordStats($conn) {
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Operator</label>
-                        <select name="operator_id" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                        <select name="operator_id" id="operatorSelect" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" onchange="loadOperatorVehicles()">
                             <option value="">Select Operator</option>
                             <?php 
                             $operators = getOperators($conn);
@@ -383,29 +403,30 @@ function getViolationRecordStats($conn) {
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Vehicle</label>
-                        <select name="vehicle_id" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
-                            <option value="">Select Vehicle</option>
-                            <?php 
-                            $v_query = "SELECT vehicle_id, plate_number, operator_id FROM vehicles ORDER BY plate_number";
-                            $v_stmt = $conn->prepare($v_query);
-                            $v_stmt->execute();
-                            $vehicles = $v_stmt->fetchAll(PDO::FETCH_ASSOC);
-                            foreach ($vehicles as $v): ?>
-                            <option value="<?php echo $v['vehicle_id']; ?>" data-operator="<?php echo $v['operator_id']; ?>"><?php echo $v['plate_number'] . ' (' . $v['vehicle_id'] . ')'; ?></option>
-                            <?php endforeach; ?>
+                        <select name="vehicle_id" id="vehicleSelect" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                            <option value="">Select Operator First</option>
                         </select>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
+                        <label class="block text-sm font-medium text-gray-700">Violation Category</label>
+                        <select name="violation_category" id="categorySelect" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" onchange="loadViolationTypes()">
+                            <option value="">Select Category</option>
+                            <?php 
+                            $cat_query = "SELECT * FROM violation_categories ORDER BY category_name";
+                            $cat_stmt = $conn->prepare($cat_query);
+                            $cat_stmt->execute();
+                            $categories = $cat_stmt->fetchAll(PDO::FETCH_ASSOC);
+                            foreach ($categories as $cat): ?>
+                            <option value="<?php echo $cat['category_id']; ?>"><?php echo $cat['category_name']; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div>
                         <label class="block text-sm font-medium text-gray-700">Violation Type</label>
-                        <select name="violation_type" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
-                            <option value="">Select Type</option>
-                            <option value="Speeding">Speeding</option>
-                            <option value="Overloading">Overloading</option>
-                            <option value="Route Deviation">Route Deviation</option>
-                            <option value="No Franchise">No Franchise</option>
-                            <option value="Reckless Driving">Reckless Driving</option>
+                        <select name="violation_type" id="typeSelect" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                            <option value="">Select Category First</option>
                         </select>
                     </div>
                     <div>
@@ -471,6 +492,38 @@ function getViolationRecordStats($conn) {
                 </button>
             </div>
             <div id="analyticsModalContent"></div>
+        </div>
+    </div>
+
+    <!-- Settlement Modal -->
+    <div id="settlementModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Mark as Paid</h2>
+                <button onclick="closeModal('settlementModal')" class="text-gray-500 hover:text-gray-700">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <form id="settlementForm" class="space-y-4">
+                <input type="hidden" id="settlementViolationId" name="violation_id">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Payment Method</label>
+                    <select name="payment_method" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                        <option value="Cash">Cash</option>
+                        <option value="Check">Check</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                        <option value="Online Payment">Online Payment</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Remarks (Optional)</label>
+                    <textarea name="remarks" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" placeholder="Additional notes about the payment..."></textarea>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeModal('settlementModal')" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">Mark as Paid</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -612,6 +665,64 @@ function getViolationRecordStats($conn) {
                 });
         }
 
+        // Load vehicles based on selected operator
+        function loadOperatorVehicles() {
+            const operatorId = document.getElementById('operatorSelect').value;
+            const vehicleSelect = document.getElementById('vehicleSelect');
+            
+            if (!operatorId) {
+                vehicleSelect.innerHTML = '<option value="">Select Operator First</option>';
+                return;
+            }
+            
+            vehicleSelect.innerHTML = '<option value="">Loading...</option>';
+            
+            fetch(`get_operator_vehicles.php?operator_id=${operatorId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.vehicles.length > 0) {
+                        vehicleSelect.innerHTML = '<option value="">Select Vehicle</option>' +
+                            data.vehicles.map(vehicle => 
+                                `<option value="${vehicle.vehicle_id}">${vehicle.plate_number} - ${vehicle.vehicle_type}</option>`
+                            ).join('');
+                    } else {
+                        vehicleSelect.innerHTML = '<option value="">No vehicles found</option>';
+                    }
+                })
+                .catch(error => {
+                    vehicleSelect.innerHTML = '<option value="">Error loading vehicles</option>';
+                });
+        }
+        
+        // Load violation types based on selected category
+        function loadViolationTypes() {
+            const categoryId = document.getElementById('categorySelect').value;
+            const typeSelect = document.getElementById('typeSelect');
+            
+            if (!categoryId) {
+                typeSelect.innerHTML = '<option value="">Select Category First</option>';
+                return;
+            }
+            
+            typeSelect.innerHTML = '<option value="">Loading...</option>';
+            
+            fetch(`get_violation_types.php?category_id=${categoryId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.types.length > 0) {
+                        typeSelect.innerHTML = '<option value="">Select Violation Type</option>' +
+                            data.types.map(type => 
+                                `<option value="${type.type_name}">${type.type_name}</option>`
+                            ).join('');
+                    } else {
+                        typeSelect.innerHTML = '<option value="">No types found</option>';
+                    }
+                })
+                .catch(error => {
+                    typeSelect.innerHTML = '<option value="">Error loading types</option>';
+                });
+        }
+
         // Handle add violation form submission
         document.getElementById('addViolationForm').addEventListener('submit', function(e) {
             e.preventDefault();
@@ -659,6 +770,36 @@ function getViolationRecordStats($conn) {
                 alert('Error updating violation');
             });
         }
+
+        // Mark violation as paid
+        function markAsPaid(violationId) {
+            document.getElementById('settlementViolationId').value = violationId;
+            document.getElementById('settlementModal').classList.remove('hidden');
+        }
+
+        // Handle settlement form submission
+        document.getElementById('settlementForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            fetch('update_settlement_ajax.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Settlement status updated successfully!');
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('Error updating settlement status');
+            });
+        });
 
         // Close export menu when clicking outside
         document.addEventListener('click', function(event) {

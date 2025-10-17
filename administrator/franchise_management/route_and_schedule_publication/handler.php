@@ -119,13 +119,23 @@ try {
                 break;
                 
             case 'get_operators':
-                $operators = getActiveOperators($db);
+                $route_name = $_GET['route_name'] ?? '';
+                if ($route_name) {
+                    $operators = getOperatorsByRoute($db, $route_name);
+                } else {
+                    $operators = getActiveOperators($db);
+                }
                 echo json_encode(['success' => true, 'data' => $operators]);
                 break;
                 
             case 'get_vehicles':
                 $operator_id = $_GET['operator_id'] ?? '';
-                $vehicles = getVehiclesByOperator($db, $operator_id);
+                $route_name = $_GET['route_name'] ?? '';
+                if ($route_name) {
+                    $vehicles = getApprovedVehiclesByRoute($db, $operator_id, $route_name);
+                } else {
+                    $vehicles = getVehiclesByOperator($db, $operator_id);
+                }
                 echo json_encode(['success' => true, 'data' => $vehicles]);
                 break;
                 
@@ -241,6 +251,28 @@ function getActiveOperators($db) {
               FROM operators WHERE status = 'active' ORDER BY first_name";
     $stmt = $db->prepare($query);
     $stmt->execute();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function getOperatorsByRoute($db, $route_name) {
+    $query = "SELECT DISTINCT o.operator_id, CONCAT(o.first_name, ' ', o.last_name) as operator_name
+              FROM operators o
+              JOIN franchise_records fr ON o.operator_id = fr.operator_id
+              WHERE fr.status = 'valid' AND fr.route_assigned = ?
+              ORDER BY o.first_name";
+    $stmt = $db->prepare($query);
+    $stmt->execute([$route_name]);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function getApprovedVehiclesByRoute($db, $operator_id, $route_name) {
+    $query = "SELECT DISTINCT v.vehicle_id, v.plate_number, v.vehicle_type, v.make, v.model
+              FROM vehicles v
+              JOIN franchise_records fr ON v.vehicle_id = fr.vehicle_id AND v.operator_id = fr.operator_id
+              WHERE fr.operator_id = ? AND fr.status = 'valid' AND fr.route_assigned = ?
+              ORDER BY v.plate_number";
+    $stmt = $db->prepare($query);
+    $stmt->execute([$operator_id, $route_name]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 

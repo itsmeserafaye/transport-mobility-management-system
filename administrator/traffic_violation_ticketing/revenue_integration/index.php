@@ -19,42 +19,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
     
-    if ($action === 'get_chart_data') {
-        $api_url = 'http://localhost:3001/api/traffic-violation/revenue?period=month';
-        $context = stream_context_create([
-            'http' => [
-                'method' => 'GET',
-                'header' => 'Content-Type: application/json\r\n'
-            ]
-        ]);
-        
-        $response = file_get_contents($api_url, false, $context);
-        if ($response !== false) {
-            echo $response;
-        } else {
-            echo json_encode(['success' => false, 'error' => 'Failed to fetch data from API']);
-        }
-        exit;
-    }
+
 }
 
 // Get data for display
 $collections = getRevenueCollections($conn);
 $stats = getRevenueStatistics($conn);
-
-// Monthly data will be loaded via API
-$monthly_data = [];
+$monthly_data = getMonthlyCollections($conn);
 
 // Function to get revenue collections
 function getRevenueCollections($conn) {
-    $query = "SELECT rc.*, tv.ticket_number, tv.violation_type, tv.fine_amount,
+    createRevenueIntegrationTable($conn);
+    $query = "SELECT ri.*, vh.ticket_number, vh.violation_type, vh.fine_amount,
                      CONCAT(o.first_name, ' ', o.last_name) as operator_name,
                      v.plate_number
-              FROM revenue_collections rc
-              LEFT JOIN violation_history tv ON rc.violation_id = tv.violation_id
-              LEFT JOIN operators o ON tv.operator_id = o.operator_id
-              LEFT JOIN vehicles v ON tv.vehicle_id = v.vehicle_id
-              ORDER BY rc.collection_date DESC
+              FROM revenue_integration ri
+              LEFT JOIN violation_history vh ON ri.violation_id = vh.violation_id
+              LEFT JOIN operators o ON ri.operator_id = o.operator_id
+              LEFT JOIN vehicles v ON vh.vehicle_id = v.vehicle_id
+              ORDER BY ri.collection_date DESC
               LIMIT 50";
     $stmt = $conn->prepare($query);
     $stmt->execute();
@@ -63,16 +46,17 @@ function getRevenueCollections($conn) {
 
 // Function to get revenue statistics
 function getRevenueStatistics($conn) {
+    createRevenueIntegrationTable($conn);
     $stats = [];
     
     // Total revenue collected
-    $query = "SELECT SUM(amount_collected) as total FROM revenue_collections";
+    $query = "SELECT SUM(collection_amount) as total FROM revenue_integration";
     $stmt = $conn->prepare($query);
     $stmt->execute();
     $stats['total_revenue'] = $stmt->fetchColumn() ?: 0;
     
     // Monthly revenue
-    $query = "SELECT SUM(amount_collected) as monthly FROM revenue_collections 
+    $query = "SELECT SUM(collection_amount) as monthly FROM revenue_integration 
               WHERE MONTH(collection_date) = MONTH(CURDATE()) 
               AND YEAR(collection_date) = YEAR(CURDATE())";
     $stmt = $conn->prepare($query);
@@ -96,8 +80,8 @@ function getRevenueStatistics($conn) {
     $stats['collection_rate'] = round($stmt->fetchColumn() ?: 0, 1);
     
     // Pending revenue (collections with pending status)
-    $query = "SELECT SUM(amount_collected) as pending FROM revenue_collections 
-              WHERE status = 'pending'";
+    $query = "SELECT SUM(collection_amount) as pending FROM revenue_integration 
+              WHERE collection_status = 'pending'";
     $stmt = $conn->prepare($query);
     $stmt->execute();
     $stats['pending_revenue'] = $stmt->fetchColumn() ?: 0;
@@ -107,6 +91,7 @@ function getRevenueStatistics($conn) {
 
 // Function to generate revenue report
 function generateRevenueReport($conn, $period_start, $period_end) {
+    createRevenueIntegrationTable($conn);
     $report = [];
     
     // Report header
@@ -118,11 +103,11 @@ function generateRevenueReport($conn, $period_start, $period_end) {
     // Revenue summary for the period
     $query = "SELECT 
                 COUNT(*) as total_collections,
-                SUM(amount_collected) as total_amount,
-                AVG(amount_collected) as average_amount,
-                MIN(amount_collected) as min_amount,
-                MAX(amount_collected) as max_amount
-              FROM revenue_collections 
+                SUM(collection_amount) as total_amount,
+                AVG(collection_amount) as average_amount,
+                MIN(collection_amount) as min_amount,
+                MAX(collection_amount) as max_amount
+              FROM revenue_integration 
               WHERE collection_date BETWEEN ? AND ?";
     $stmt = $conn->prepare($query);
     $stmt->execute([$period_start, $period_end]);
@@ -132,8 +117,8 @@ function generateRevenueReport($conn, $period_start, $period_end) {
     $query = "SELECT 
                 DATE(collection_date) as collection_day,
                 COUNT(*) as daily_count,
-                SUM(amount_collected) as daily_amount
-              FROM revenue_collections 
+                SUM(collection_amount) as daily_amount
+              FROM revenue_integration 
               WHERE collection_date BETWEEN ? AND ?
               GROUP BY DATE(collection_date)
               ORDER BY collection_day";
@@ -145,8 +130,8 @@ function generateRevenueReport($conn, $period_start, $period_end) {
     $query = "SELECT 
                 payment_method,
                 COUNT(*) as count,
-                SUM(amount_collected) as amount
-              FROM revenue_collections 
+                SUM(collection_amount) as amount
+              FROM revenue_integration 
               WHERE collection_date BETWEEN ? AND ?
               GROUP BY payment_method";
     $stmt = $conn->prepare($query);
@@ -155,13 +140,13 @@ function generateRevenueReport($conn, $period_start, $period_end) {
     
     // Top violation types by revenue
     $query = "SELECT 
-                tv.violation_type,
+                vh.violation_type,
                 COUNT(*) as count,
-                SUM(rc.amount_collected) as total_revenue
-              FROM revenue_collections rc
-              JOIN violation_history tv ON rc.violation_id = tv.violation_id
-              WHERE rc.collection_date BETWEEN ? AND ?
-              GROUP BY tv.violation_type
+                SUM(ri.collection_amount) as total_revenue
+              FROM revenue_integration ri
+              JOIN violation_history vh ON ri.violation_id = vh.violation_id
+              WHERE ri.collection_date BETWEEN ? AND ?
+              GROUP BY vh.violation_type
               ORDER BY total_revenue DESC
               LIMIT 10";
     $stmt = $conn->prepare($query);
@@ -169,6 +154,23 @@ function generateRevenueReport($conn, $period_start, $period_end) {
     $report['top_violations'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     return $report;
+}
+
+// Function to get monthly collections data
+function getMonthlyCollections($conn) {
+    createRevenueIntegrationTable($conn);
+    $query = "SELECT 
+                DATE_FORMAT(collection_date, '%Y-%m') as month,
+                DATE_FORMAT(collection_date, '%M %Y') as month_name,
+                COUNT(*) as collections_count,
+                SUM(collection_amount) as total_amount
+              FROM revenue_integration 
+              WHERE collection_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+              GROUP BY DATE_FORMAT(collection_date, '%Y-%m')
+              ORDER BY month";
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 ?>
 <!DOCTYPE html>
@@ -242,9 +244,9 @@ function generateRevenueReport($conn, $period_start, $period_end) {
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="violation-ticketing-icon" style="transform: rotate(180deg);"></i>
                     </button>
                     <div id="violation-ticketing-menu" class="ml-8 space-y-1">
-                        <a href="../../traffic_violation_ticketing/violation_record_management/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Violation Record Management</a>
-                        <a href="../../traffic_violation_ticketing/linking_and_analytics/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">TVT Analytics</a>
-                        <a href="../../traffic_violation_ticketing/revenue_integration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Revenue Integration</a>
+                        <a href="../violation_record_management/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Violation Record Management</a>
+                        <a href="../linking_and_analytics/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">TVT Analytics</a>
+                        <a href="../revenue_integration/" class="block p-2 text-sm rounded-lg font-medium" style="color: #4CAF50; background-color: rgba(76, 175, 80, 0.2);">Revenue Integration</a>
                     </div>
                 </div>
 
@@ -252,7 +254,7 @@ function generateRevenueReport($conn, $period_start, $period_end) {
                     <button onclick="toggleDropdown('vehicle-inspection')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
                         <div class="flex items-center">
                             <i data-lucide="clipboard-check" class="w-5 h-5 mr-3"></i>
-                            <span class="text-sm font-medium">Vehicle Inspection</span>
+                            <span class="text-sm font-medium">Vehicle Inspection & Registration</span>
                         </div>
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="vehicle-inspection-icon"></i>
                     </button>
@@ -260,6 +262,7 @@ function generateRevenueReport($conn, $period_start, $period_end) {
                         <a href="../../vehicle_inspection_and_registration/inspection_scheduling/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Inspection Scheduling</a>
                         <a href="../../vehicle_inspection_and_registration/inspection_result_recording/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Result Recording</a>
                         <a href="../../vehicle_inspection_and_registration/inspection_history_tracking/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">History Tracking</a>
+                        <a href="../../vehicle_inspection_and_registration/vehicle_registration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">LTO Registration</a>
                     </div>
                 </div>
 
@@ -287,11 +290,25 @@ function generateRevenueReport($conn, $period_start, $period_end) {
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="user-mgmt-icon"></i>
                     </button>
                     <div id="user-mgmt-menu" class="hidden ml-8 space-y-1">
-                        <a href="../../user_management/account_registry/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Account Registry</a>
-                        <a href="../../user_management/verification_queue/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Verification Queue</a>
-                        <a href="../../user_management/account_maintenance/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Account Maintenance</a>
-                        <a href="../../user_management/roles_and_permissions/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Roles & Permissions</a>
-                        <a href="../../user_management/audit_logs/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Audit Logs</a>
+                        <a href="../../user_management/account_registry/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Account Registry</a>
+                        <a href="../../user_management/verification_queue/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Verification Queue</a>
+                        <a href="../../user_management/account_maintenance/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Account Maintenance</a>
+                        <a href="../../user_management/roles_and_permissions/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Roles & Permissions</a>
+                        <a href="../../user_management/audit_logs/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Audit Logs</a>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <button onclick="toggleDropdown('settings')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                        <div class="flex items-center">
+                            <i data-lucide="settings" class="w-5 h-5 mr-3"></i>
+                            <span class="text-sm font-medium">Settings</span>
+                        </div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="settings-icon"></i>
+                    </button>
+                    <div id="settings-menu" class="hidden ml-8 space-y-1">
+                        <a href="../../settings/system_configuration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">System Configuration</a>
+                        <a href="../../settings/backup_and_restore/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Backup & Restore</a>
                     </div>
                 </div>
             </nav>
@@ -374,11 +391,19 @@ function generateRevenueReport($conn, $period_start, $period_end) {
                 <!-- Monthly Collections Chart -->
                 <div class="bg-white rounded-xl border border-slate-200 p-6 mb-6">
                     <h3 class="text-lg font-semibold mb-4">Monthly Collections</h3>
-                    <div id="monthlyChart" class="h-64 flex items-center justify-center">
-                        <div class="text-center text-slate-500">
-                            <i data-lucide="bar-chart" class="w-12 h-12 mx-auto mb-2"></i>
-                            <p>Chart data will be available when API is configured</p>
+                    <div id="monthlyChart" class="h-64">
+                        <?php if (empty($monthly_data)): ?>
+                        <div class="h-full flex items-center justify-center text-slate-500">
+                            <div class="text-center">
+                                <i data-lucide="bar-chart" class="w-12 h-12 mx-auto mb-2"></i>
+                                <p>No collection data available yet</p>
+                            </div>
                         </div>
+                        <?php else: ?>
+                        <div class="h-full">
+                            <canvas id="collectionsChart" width="400" height="200"></canvas>
+                        </div>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -391,7 +416,7 @@ function generateRevenueReport($conn, $period_start, $period_end) {
                         <table class="w-full">
                             <thead class="bg-slate-50">
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Collection ID</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Revenue ID</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Operator</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Violation</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Amount</th>
@@ -402,7 +427,7 @@ function generateRevenueReport($conn, $period_start, $period_end) {
                             <tbody class="divide-y divide-slate-200">
                                 <?php foreach ($collections as $collection): ?>
                                 <tr class="hover:bg-slate-50">
-                                    <td class="px-6 py-4 text-sm font-medium text-slate-900"><?php echo $collection['collection_id']; ?></td>
+                                    <td class="px-6 py-4 text-sm font-medium text-slate-900"><?php echo $collection['revenue_id']; ?></td>
                                     <td class="px-6 py-4 text-sm text-slate-900">
                                         <?php echo $collection['operator_name'] ?? 'N/A'; ?>
                                         <div class="text-xs text-slate-500"><?php echo $collection['plate_number']; ?></div>
@@ -411,13 +436,12 @@ function generateRevenueReport($conn, $period_start, $period_end) {
                                         <?php echo $collection['violation_type']; ?>
                                         <div class="text-xs text-slate-500">Fine: ₱<?php echo number_format($collection['fine_amount'], 2); ?></div>
                                     </td>
-                                    <td class="px-6 py-4 text-sm font-medium text-green-600">₱<?php echo number_format($collection['amount_collected'], 2); ?></td>
+                                    <td class="px-6 py-4 text-sm font-medium text-green-600">₱<?php echo number_format($collection['collection_amount'], 2); ?></td>
                                     <td class="px-6 py-4">
                                         <?php 
-                                        $statusClass = $collection['status'] == 'deposited' ? 'bg-green-100 text-green-800' : 
-                                                      ($collection['status'] == 'verified' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800');
+                                        $statusClass = $collection['collection_status'] == 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
                                         ?>
-                                        <span class="px-2 py-1 text-xs font-medium <?php echo $statusClass; ?> rounded-full"><?php echo ucfirst($collection['status']); ?></span>
+                                        <span class="px-2 py-1 text-xs font-medium <?php echo $statusClass; ?> rounded-full"><?php echo ucfirst($collection['collection_status']); ?></span>
                                     </td>
                                     <td class="px-6 py-4 text-sm text-slate-900"><?php echo date('M d, Y', strtotime($collection['collection_date'])); ?></td>
                                 </tr>
@@ -430,8 +454,54 @@ function generateRevenueReport($conn, $period_start, $period_end) {
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         lucide.createIcons();
+        
+        // Monthly collections chart
+        <?php if (!empty($monthly_data)): ?>
+        const monthlyData = <?php echo json_encode($monthly_data); ?>;
+        const ctx = document.getElementById('collectionsChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: monthlyData.map(item => item.month_name),
+                datasets: [{
+                    label: 'Collections (₱)',
+                    data: monthlyData.map(item => parseFloat(item.total_amount)),
+                    backgroundColor: 'rgba(76, 175, 80, 0.6)',
+                    borderColor: 'rgba(76, 175, 80, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '₱' + value.toLocaleString();
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return 'Amount: ₱' + context.parsed.y.toLocaleString();
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        <?php endif; ?>
 
         function toggleDropdown(menuId) {
             const allMenus = document.querySelectorAll('[id$="-menu"]');

@@ -109,7 +109,7 @@ $total_pages = ceil($total_operators / $limit);
                     <button onclick="toggleDropdown('vehicle-inspection')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
                         <div class="flex items-center">
                             <i data-lucide="clipboard-check" class="w-5 h-5 mr-3"></i>
-                            <span class="text-sm font-medium">Vehicle Inspection</span>
+                            <span class="text-sm font-medium">Vehicle Inspection & Registration</span>
                         </div>
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="vehicle-inspection-icon"></i>
                     </button>
@@ -117,6 +117,7 @@ $total_pages = ceil($total_operators / $limit);
                         <a href="../../vehicle_inspection_and_registration/inspection_scheduling/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Inspection Scheduling</a>
                         <a href="../../vehicle_inspection_and_registration/inspection_result_recording/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Result Recording</a>
                         <a href="../../vehicle_inspection_and_registration/inspection_history_tracking/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">History Tracking</a>
+                        <a href="../../vehicle_inspection_and_registration/vehicle_registration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">LTO Registration</a>
                     </div>
                 </div>
 
@@ -149,6 +150,20 @@ $total_pages = ceil($total_operators / $limit);
                         <a href="../../user_management/account_maintenance/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Account Maintenance</a>
                         <a href="../../user_management/roles_and_permissions/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Roles & Permissions</a>
                         <a href="../../user_management/audit_logs/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Audit Logs</a>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <button onclick="toggleDropdown('settings')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                        <div class="flex items-center">
+                            <i data-lucide="settings" class="w-5 h-5 mr-3"></i>
+                            <span class="text-sm font-medium">Settings</span>
+                        </div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="settings-icon"></i>
+                    </button>
+                    <div id="settings-menu" class="hidden ml-8 space-y-1">
+                        <a href="../../settings/system_configuration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">System Configuration</a>
+                        <a href="../../settings/backup_and_restore/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Backup & Restore</a>
                     </div>
                 </div>
             </nav>
@@ -273,10 +288,11 @@ $total_pages = ceil($total_operators / $limit);
                             <i data-lucide="plus" class="w-4 h-4"></i>
                             <span>Add Operator</span>
                         </button>
-                        <button onclick="updateComplianceScores()" class="px-4 py-2 text-white rounded-lg flex items-center space-x-2 transition-colors" style="background-color: #4A90E2;" onmouseover="this.style.backgroundColor='#357ABD'" onmouseout="this.style.backgroundColor='#4A90E2'">
-                            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                            <span>Update Scores</span>
+                        <button onclick="openAddVehicleModal()" class="px-4 py-2 bg-blue-500 text-white rounded-lg flex items-center space-x-2 hover:bg-blue-600 transition-colors">
+                            <i data-lucide="car" class="w-4 h-4"></i>
+                            <span>Add Vehicle</span>
                         </button>
+
                         <div class="relative">
                             <button onclick="toggleExportMenu()" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 flex items-center space-x-2">
                                 <i data-lucide="download" class="w-4 h-4"></i>
@@ -596,6 +612,88 @@ $total_pages = ceil($total_operators / $limit);
         </div>
     </div>
 
+    <!-- Add Vehicle Modal -->
+    <div id="addVehicleModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Add Vehicle to Existing Operator</h2>
+                <button onclick="closeModal('addVehicleModal')" class="text-gray-500 hover:text-gray-700">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <form id="addVehicleForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Operator</label>
+                    <select name="operator_id" required class="w-full border border-gray-300 rounded-md px-3 py-2">
+                        <option value="">Choose an existing operator</option>
+                        <?php 
+                        $op_query = "SELECT operator_id, first_name, last_name FROM operators ORDER BY first_name";
+                        $op_stmt = $conn->prepare($op_query);
+                        $op_stmt->execute();
+                        $all_operators = $op_stmt->fetchAll(PDO::FETCH_ASSOC);
+                        foreach ($all_operators as $op): ?>
+                        <option value="<?php echo $op['operator_id']; ?>"><?php echo $op['first_name'] . ' ' . $op['last_name'] . ' (' . $op['operator_id'] . ')'; ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Plate Number</label>
+                        <input type="text" name="plate_number" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Vehicle Type</label>
+                        <select name="vehicle_type" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                            <option value="">Select Type</option>
+                            <option value="jeepney">Jeepney</option>
+                            <option value="bus">Bus</option>
+                            <option value="tricycle">Tricycle</option>
+                            <option value="taxi">Taxi</option>
+                            <option value="van">Van</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Make</label>
+                        <input type="text" name="make" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Model</label>
+                        <input type="text" name="model" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Year</label>
+                        <input type="number" name="year_manufactured" min="1990" max="2025" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Engine Number</label>
+                        <input type="text" name="engine_number" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Chassis Number</label>
+                        <input type="text" name="chassis_number" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Seating Capacity</label>
+                    <input type="number" name="seating_capacity" min="1" max="100" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                </div>
+
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeModal('addVehicleModal')" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Add Vehicle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 
 
     <script>
@@ -637,6 +735,10 @@ $total_pages = ceil($total_operators / $limit);
         // Modal Functions
         function openAddModal() {
             document.getElementById('addModal').classList.remove('hidden');
+        }
+        
+        function openAddVehicleModal() {
+            document.getElementById('addVehicleModal').classList.remove('hidden');
         }
         
 
@@ -760,6 +862,30 @@ $total_pages = ceil($total_operators / $limit);
                 alert('Error: ' + error.message);
             });
         });
+        
+        // Handle add vehicle form submission
+        document.getElementById('addVehicleForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            
+            fetch('add_vehicle_ajax.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Vehicle added successfully!');
+                    closeModal('addVehicleModal');
+                    location.reload();
+                } else {
+                    alert(data.message || 'Failed to add vehicle');
+                }
+            })
+            .catch(error => {
+                alert('Error: ' + error.message);
+            });
+        });
 
         function deleteOperator(operatorId) {
             if (confirm('Are you sure you want to delete this operator?')) {
@@ -813,27 +939,7 @@ $total_pages = ceil($total_operators / $limit);
             }
         });
         
-        function updateComplianceScores() {
-            if (confirm('Update all compliance scores based on current status?')) {
-                fetch('../compliance_status_management/update_scores.php', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                    body: new URLSearchParams({action: 'update_scores'})
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Compliance scores updated successfully!');
-                        location.reload();
-                    } else {
-                        alert('Error updating scores: ' + (data.message || 'Unknown error'));
-                    }
-                })
-                .catch(error => {
-                    alert('Error updating scores');
-                });
-            }
-        }
+
         
         // Enhanced sidebar toggle function with smooth animations
         function toggleSidebar() {

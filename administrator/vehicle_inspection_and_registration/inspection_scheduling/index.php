@@ -5,10 +5,42 @@ require_once '../../../config/config.php';
 $database = new Database();
 $conn = $database->getConnection();
 
+// Fix existing records with empty result field
+try {
+    $fixQuery = "UPDATE inspection_records SET result = 'scheduled' WHERE result IS NULL OR result = '' OR result = '&#39;&#39;'";
+    $conn->prepare($fixQuery)->execute();
+    
+    // Also check for any records that might have HTML entities
+    $fixQuery2 = "UPDATE inspection_records SET result = 'scheduled' WHERE result LIKE '%&#39;%' OR result = ''";
+    $conn->prepare($fixQuery2)->execute();
+} catch (Exception $e) {
+    // Continue if update fails
+}
+
 // Get statistics
 $stats = getInspectionStats($conn);
 $pending_inspections = getPendingInspections($conn);
-$scheduled_inspections = getScheduledInspections($conn);
+// Show only future and today's scheduled inspections (not overdue, not completed)
+try {
+    $query = "SELECT ir.*, 
+                     COALESCE(o.first_name, 'Unknown') as first_name, 
+                     COALESCE(o.last_name, 'Operator') as last_name, 
+                     COALESCE(v.plate_number, ir.vehicle_id) as plate_number, 
+                     COALESCE(v.vehicle_type, 'Unknown') as vehicle_type, 
+                     COALESCE(v.make, '') as make, 
+                     COALESCE(v.model, '') as model
+              FROM inspection_records ir
+              LEFT JOIN vehicles v ON ir.vehicle_id = v.vehicle_id
+              LEFT JOIN operators o ON v.operator_id = o.operator_id
+              WHERE (ir.result IS NULL OR ir.result = '' OR ir.result = 'scheduled')
+                AND ir.inspection_date >= CURDATE()
+              ORDER BY ir.inspection_date ASC";
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+    $scheduled_inspections = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $scheduled_inspections = [];
+}
 $overdue_inspections = getOverdueInspections($conn);
 
 function getInspectionStats($conn) {
@@ -49,7 +81,7 @@ function getPendingInspections($conn) {
               JOIN operators o ON cs.operator_id = o.operator_id
               JOIN vehicles v ON cs.vehicle_id = v.vehicle_id
               LEFT JOIN franchise_applications fa ON cs.operator_id = fa.operator_id AND cs.vehicle_id = fa.vehicle_id
-              WHERE cs.inspection_status IN ('pending', 'overdue')
+              WHERE cs.inspection_status IN ('pending', 'overdue') AND cs.inspection_status != 'scheduled'
               ORDER BY cs.next_inspection_due ASC";
     $stmt = $conn->prepare($query);
     $stmt->execute();
@@ -57,24 +89,54 @@ function getPendingInspections($conn) {
 }
 
 function getScheduledInspections($conn) {
-    $query = "SELECT ir.*, o.first_name, o.last_name, v.plate_number, v.vehicle_type, v.make, v.model
-              FROM inspection_records ir
-              JOIN vehicles v ON ir.vehicle_id = v.vehicle_id
-              JOIN operators o ON v.operator_id = o.operator_id
-              WHERE ir.inspection_date >= CURDATE()
-              ORDER BY ir.inspection_date ASC";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    try {
+        // First try with JOINs
+        $query = "SELECT ir.*, 
+                         COALESCE(o.first_name, 'Unknown') as first_name, 
+                         COALESCE(o.last_name, 'Operator') as last_name, 
+                         COALESCE(v.plate_number, ir.vehicle_id) as plate_number, 
+                         COALESCE(v.vehicle_type, 'Unknown') as vehicle_type, 
+                         COALESCE(v.make, '') as make, 
+                         COALESCE(v.model, '') as model
+                  FROM inspection_records ir
+                  LEFT JOIN vehicles v ON ir.vehicle_id = v.vehicle_id
+                  LEFT JOIN operators o ON v.operator_id = o.operator_id
+                  WHERE (ir.result IS NULL OR ir.result = '' OR ir.result = 'scheduled')
+                  ORDER BY ir.inspection_date ASC";
+        $stmt = $conn->prepare($query);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        // If JOIN fails, return basic inspection records
+        try {
+            $query = "SELECT *, vehicle_id as plate_number, 'Unknown' as first_name, 'Operator' as last_name, 'Unknown' as vehicle_type, '' as make, '' as model
+                      FROM inspection_records 
+                      WHERE (result IS NULL OR result = '' OR result = 'scheduled')
+                      ORDER BY inspection_date ASC";
+            $stmt = $conn->prepare($query);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e2) {
+            return [];
+        }
+    }
 }
 
 function getOverdueInspections($conn) {
-    $query = "SELECT cs.*, o.first_name, o.last_name, v.plate_number, v.vehicle_type, v.make, v.model,
-              DATEDIFF(CURDATE(), cs.next_inspection_due) as days_overdue
-              FROM compliance_status cs
-              JOIN operators o ON cs.operator_id = o.operator_id
-              JOIN vehicles v ON cs.vehicle_id = v.vehicle_id
-              WHERE cs.inspection_status = 'overdue' AND cs.next_inspection_due < CURDATE()
+    // Show overdue inspections from inspection_records table
+    $query = "SELECT ir.*, 
+                     COALESCE(o.first_name, 'Unknown') as first_name, 
+                     COALESCE(o.last_name, 'Operator') as last_name, 
+                     COALESCE(v.plate_number, ir.vehicle_id) as plate_number, 
+                     COALESCE(v.vehicle_type, 'Unknown') as vehicle_type, 
+                     COALESCE(v.make, '') as make, 
+                     COALESCE(v.model, '') as model,
+                     DATEDIFF(CURDATE(), ir.inspection_date) as days_overdue
+              FROM inspection_records ir
+              LEFT JOIN vehicles v ON ir.vehicle_id = v.vehicle_id
+              LEFT JOIN operators o ON v.operator_id = o.operator_id
+              WHERE ir.inspection_date < CURDATE() 
+                AND (ir.result IS NULL OR ir.result = '' OR ir.result = 'scheduled')
               ORDER BY days_overdue DESC";
     $stmt = $conn->prepare($query);
     $stmt->execute();
@@ -88,19 +150,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action'])) {
         switch ($_POST['action']) {
             case 'schedule_inspection':
-                $inspection_id = generateInspectionId($conn);
-                $data = [
-                    'inspection_id' => $inspection_id,
-                    'vehicle_id' => $_POST['vehicle_id'],
-                    'inspection_date' => $_POST['inspection_date'],
-                    'inspector_name' => $_POST['inspector_name'],
-                    'inspection_type' => $_POST['inspection_type']
-                ];
-                
-                if (scheduleInspection($conn, $data)) {
-                    echo json_encode(['success' => true, 'message' => 'Inspection scheduled successfully']);
-                } else {
-                    echo json_encode(['success' => false, 'message' => 'Failed to schedule inspection']);
+                try {
+                    $inspection_id = generateInspectionId($conn);
+                    $data = [
+                        'inspection_id' => $inspection_id,
+                        'vehicle_id' => $_POST['vehicle_id'],
+                        'inspection_date' => $_POST['inspection_date'],
+                        'inspector_name' => $_POST['inspector_name'],
+                        'inspection_type' => $_POST['inspection_type']
+                    ];
+                    
+                    error_log('Scheduling inspection with data: ' . print_r($data, true));
+                    
+                    if (scheduleInspection($conn, $data)) {
+                        echo json_encode(['success' => true, 'message' => 'Inspection scheduled successfully', 'inspection_id' => $inspection_id]);
+                    } else {
+                        echo json_encode(['success' => false, 'message' => 'Failed to schedule inspection']);
+                    }
+                } catch (Exception $e) {
+                    error_log('Schedule inspection error: ' . $e->getMessage());
+                    echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
                 }
                 break;
                 
@@ -132,16 +201,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 function scheduleInspection($conn, $data) {
     try {
+        // Create inspection_records table if it doesn't exist
+        $createTable = "CREATE TABLE IF NOT EXISTS inspection_records (
+            inspection_id VARCHAR(20) PRIMARY KEY,
+            vehicle_id VARCHAR(20),
+            inspection_date DATE,
+            inspector_name VARCHAR(100),
+            inspection_type VARCHAR(50),
+            result VARCHAR(20) DEFAULT 'scheduled',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )";
+        $conn->prepare($createTable)->execute();
+        
         $conn->beginTransaction();
         
         // Insert inspection record
         $query = "INSERT INTO inspection_records (inspection_id, vehicle_id, inspection_date, inspector_name, inspection_type, result) 
-                  VALUES (:inspection_id, :vehicle_id, :inspection_date, :inspector_name, :inspection_type, 'pending')";
+                  VALUES (:inspection_id, :vehicle_id, :inspection_date, :inspector_name, :inspection_type, :result)";
         $stmt = $conn->prepare($query);
+        $data['result'] = 'scheduled';
         $stmt->execute($data);
         
-        // Update compliance status
-        $query = "UPDATE compliance_status SET inspection_status = 'pending', next_inspection_due = :inspection_date 
+        // Update compliance status to scheduled
+        $query = "UPDATE compliance_status SET inspection_status = 'scheduled', next_inspection_due = :inspection_date 
                   WHERE vehicle_id = :vehicle_id";
         $stmt = $conn->prepare($query);
         $stmt->execute(['inspection_date' => $data['inspection_date'], 'vehicle_id' => $data['vehicle_id']]);
@@ -166,14 +248,9 @@ function rescheduleInspection($conn, $inspection_id, $new_date) {
     return $stmt->execute(['new_date' => $new_date, 'inspection_id' => $inspection_id]);
 }
 
-function generateInspectionId($conn) {
-    $year = date('Y');
-    $query = "SELECT COUNT(*) + 1 as next_id FROM inspection_records WHERE inspection_id LIKE 'INS-{$year}-%'";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    $next_id = str_pad($stmt->fetch(PDO::FETCH_ASSOC)['next_id'], 3, '0', STR_PAD_LEFT);
-    return "INS-{$year}-{$next_id}";
-}
+
+
+
 ?>
 
 <!DOCTYPE html>
@@ -257,7 +334,7 @@ function generateInspectionId($conn) {
                     <button onclick="toggleDropdown('vehicle-inspection')" class="w-full flex items-center justify-between p-2 rounded-xl transition-all" style="color: #4CAF50; background-color: rgba(76, 175, 80, 0.1);">
                         <div class="flex items-center">
                             <i data-lucide="clipboard-check" class="w-5 h-5 mr-3"></i>
-                            <span class="text-sm font-medium">Vehicle Inspection</span>
+                            <span class="text-sm font-medium">Vehicle Inspection & Registration</span>
                         </div>
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="vehicle-inspection-icon" style="transform: rotate(180deg);"></i>
                     </button>
@@ -265,6 +342,7 @@ function generateInspectionId($conn) {
                         <a href="../../vehicle_inspection_and_registration/inspection_scheduling/" class="block p-2 text-sm rounded-lg font-medium" style="color: #4CAF50; background-color: rgba(76, 175, 80, 0.2);">Inspection Scheduling</a>
                         <a href="../../vehicle_inspection_and_registration/inspection_result_recording/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Result Recording</a>
                         <a href="../../vehicle_inspection_and_registration/inspection_history_tracking/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">History Tracking</a>
+                        <a href="../../vehicle_inspection_and_registration/vehicle_registration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Vehicle Registration</a>
                     </div>
                 </div>
 
@@ -292,11 +370,25 @@ function generateInspectionId($conn) {
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="user-mgmt-icon"></i>
                     </button>
                     <div id="user-mgmt-menu" class="hidden ml-8 space-y-1">
-                        <a href="../../user_management/account_registry/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Account Registry</a>
-                        <a href="../../user_management/verification_queue/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Verification Queue</a>
-                        <a href="../../user_management/account_maintenance/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Account Maintenance</a>
-                        <a href="../../user_management/roles_and_permissions/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Roles & Permissions</a>
-                        <a href="../../user_management/audit_logs/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Audit Logs</a>
+                        <a href="../../user_management/account_registry/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Account Registry</a>
+                        <a href="../../user_management/verification_queue/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Verification Queue</a>
+                        <a href="../../user_management/account_maintenance/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Account Maintenance</a>
+                        <a href="../../user_management/roles_and_permissions/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Roles & Permissions</a>
+                        <a href="../../user_management/audit_logs/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Audit Logs</a>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <button onclick="toggleDropdown('settings')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                        <div class="flex items-center">
+                            <i data-lucide="settings" class="w-5 h-5 mr-3"></i>
+                            <span class="text-sm font-medium">Settings</span>
+                        </div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="settings-icon"></i>
+                    </button>
+                    <div id="settings-menu" class="hidden ml-8 space-y-1">
+                        <a href="../../settings/system_configuration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">System Configuration</a>
+                        <a href="../../settings/backup_and_restore/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Backup & Restore</a>
                     </div>
                 </div>
             </nav>
@@ -326,7 +418,6 @@ function generateInspectionId($conn) {
 
             <!-- Dashboard Content -->
             <div class="flex-1 p-6 overflow-auto">
-            <div class="max-w-7xl mx-auto">
                 <!-- Page Header -->
                 <div class="mb-8">
                     <h2 class="text-3xl font-bold text-gray-900">Inspection Scheduling</h2>
@@ -388,10 +479,7 @@ function generateInspectionId($conn) {
                 <div class="bg-white rounded-lg shadow">
                     <div class="border-b border-gray-200">
                         <nav class="-mb-px flex space-x-8 px-6">
-                            <button onclick="switchTab('pending')" id="pending-tab" class="py-4 px-1 border-b-2 border-orange-500 font-medium text-sm text-orange-600">
-                                Pending Inspections
-                            </button>
-                            <button onclick="switchTab('scheduled')" id="scheduled-tab" class="py-4 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                            <button onclick="switchTab('scheduled')" id="scheduled-tab" class="py-4 px-1 border-b-2 border-orange-500 font-medium text-sm text-orange-600">
                                 Scheduled Inspections
                             </button>
                             <button onclick="switchTab('overdue')" id="overdue-tab" class="py-4 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">
@@ -400,59 +488,14 @@ function generateInspectionId($conn) {
                         </nav>
                     </div>
 
-                    <!-- Pending Inspections Tab -->
-                    <div id="pending-content" class="p-6">
+                    <!-- Scheduled Inspections Tab -->
+                    <div id="scheduled-content" class="p-6">
                         <div class="flex justify-between items-center mb-6">
-                            <h3 class="text-lg font-medium text-gray-900">Pending Inspections</h3>
-                            <button onclick="openScheduleModal()" class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center">
+                            <h3 class="text-lg font-medium text-gray-900">Scheduled Inspections</h3>
+                            <button onclick="openNewScheduleModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center">
                                 <i data-lucide="plus" class="h-4 w-4 mr-2"></i>
                                 Schedule Inspection
                             </button>
-                        </div>
-
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Operator</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vehicle</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    <?php foreach ($pending_inspections as $inspection): ?>
-                                    <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($inspection['first_name'] . ' ' . $inspection['last_name']); ?></div>
-                                            <div class="text-sm text-gray-500"><?php echo htmlspecialchars($inspection['operator_id']); ?></div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($inspection['plate_number']); ?></div>
-                                            <div class="text-sm text-gray-500"><?php echo htmlspecialchars($inspection['vehicle_type'] . ' - ' . $inspection['make'] . ' ' . $inspection['model']); ?></div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <?php echo getStatusBadge($inspection['inspection_status']); ?>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <?php echo $inspection['next_inspection_due'] ? formatDate($inspection['next_inspection_due']) : 'Not Set'; ?>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <button onclick="scheduleInspectionModal('<?php echo $inspection['vehicle_id']; ?>', '<?php echo $inspection['operator_id']; ?>')" class="text-orange-600 hover:text-orange-900 mr-3">Schedule</button>
-                                            <button onclick="sendNotificationModal('<?php echo $inspection['operator_id']; ?>')" class="text-blue-600 hover:text-blue-900">Notify</button>
-                                        </td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Scheduled Inspections Tab -->
-                    <div id="scheduled-content" class="p-6 hidden">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="text-lg font-medium text-gray-900">Scheduled Inspections</h3>
                         </div>
 
                         <div class="overflow-x-auto">
@@ -463,6 +506,7 @@ function generateInspectionId($conn) {
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Operator</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vehicle</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inspector</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                     </tr>
@@ -482,6 +526,19 @@ function generateInspectionId($conn) {
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             <?php echo formatDate($inspection['inspection_date']); ?>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <?php 
+                                            $today = date('Y-m-d');
+                                            $inspection_date = $inspection['inspection_date'];
+                                            if ($inspection_date > $today) {
+                                                echo '<span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Pending</span>';
+                                            } elseif ($inspection_date == $today) {
+                                                echo '<span class="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">Due Today</span>';
+                                            } else {
+                                                echo '<span class="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">Overdue</span>';
+                                            }
+                                            ?>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             <?php echo htmlspecialchars($inspection['inspector_name']); ?>
@@ -518,23 +575,23 @@ function generateInspectionId($conn) {
                                     <tr>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($inspection['first_name'] . ' ' . $inspection['last_name']); ?></div>
-                                            <div class="text-sm text-gray-500"><?php echo htmlspecialchars($inspection['operator_id']); ?></div>
+                                            <div class="text-sm text-gray-500"><?php echo htmlspecialchars($inspection['vehicle_id']); ?></div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($inspection['plate_number']); ?></div>
                                             <div class="text-sm text-gray-500"><?php echo htmlspecialchars($inspection['vehicle_type']); ?></div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <?php echo formatDate($inspection['next_inspection_due']); ?>
+                                            <?php echo formatDate($inspection['inspection_date']); ?>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <span class="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
-                                                <?php echo $inspection['days_overdue']; ?> days
+                                                <?php echo $inspection['days_overdue']; ?> days overdue
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <button onclick="scheduleInspectionModal('<?php echo $inspection['vehicle_id']; ?>', '<?php echo $inspection['operator_id']; ?>')" class="text-orange-600 hover:text-orange-900 mr-3">Schedule</button>
-                                            <button onclick="sendNotificationModal('<?php echo $inspection['operator_id']; ?>')" class="text-red-600 hover:text-red-900">Urgent Notify</button>
+                                            <button onclick="rescheduleModal('<?php echo $inspection['inspection_id']; ?>')" class="text-orange-600 hover:text-orange-900 mr-3">Reschedule</button>
+                                            <button onclick="sendNotificationModal('<?php echo $inspection['vehicle_id']; ?>')" class="text-red-600 hover:text-red-900">Urgent Notify</button>
                                         </td>
                                     </tr>
                                     <?php endforeach; ?>
@@ -543,7 +600,6 @@ function generateInspectionId($conn) {
                         </div>
                     </div>
                 </div>
-            </div>
             </div>
         </div>
     </div>
@@ -559,9 +615,16 @@ function generateInspectionId($conn) {
                     <input type="hidden" id="schedule_vehicle_id" name="vehicle_id">
                     <input type="hidden" id="schedule_operator_id" name="operator_id">
                     
-                    <div>
+                    <div id="selected_info" class="hidden p-3 bg-gray-50 rounded-md">
+                        <div class="text-sm">
+                            <div class="font-medium text-gray-700">Operator: <span id="operator_display" class="text-gray-900"></span></div>
+                            <div class="font-medium text-gray-700 mt-1">Vehicle: <span id="vehicle_display" class="text-gray-900"></span></div>
+                        </div>
+                    </div>
+                    
+                    <div id="operator_selection">
                         <label class="block text-sm font-medium text-gray-700">Operator</label>
-                        <select name="operator_id" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500">
+                        <select id="operator_select" name="operator_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500">
                             <option value="">Select Operator</option>
                             <?php 
                             $op_query = "SELECT operator_id, first_name, last_name FROM operators ORDER BY first_name";
@@ -574,9 +637,9 @@ function generateInspectionId($conn) {
                         </select>
                     </div>
                     
-                    <div>
+                    <div id="vehicle_selection">
                         <label class="block text-sm font-medium text-gray-700">Vehicle</label>
-                        <select name="vehicle_id" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500">
+                        <select id="vehicle_select" name="vehicle_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500">
                             <option value="">Select Vehicle</option>
                             <?php 
                             $v_query = "SELECT v.vehicle_id, v.plate_number, CONCAT(o.first_name, ' ', o.last_name) as operator_name FROM vehicles v JOIN operators o ON v.operator_id = o.operator_id ORDER BY v.plate_number";
@@ -596,7 +659,7 @@ function generateInspectionId($conn) {
                     
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Inspector Name</label>
-                        <input type="text" name="inspector_name" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500">
+                        <input type="text" name="inspector_name" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500" placeholder="Enter inspector name">
                     </div>
                     
                     <div>
@@ -641,6 +704,34 @@ function generateInspectionId($conn) {
         </div>
     </div>
 
+    <!-- Reschedule Modal -->
+    <div id="rescheduleModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Reschedule Inspection</h3>
+                </div>
+                <form id="rescheduleForm" class="p-6 space-y-4">
+                    <input type="hidden" id="reschedule_inspection_id" name="inspection_id">
+                    
+                    <div id="reschedule_info" class="p-3 bg-gray-50 rounded-md">
+                        <div class="text-sm font-medium text-gray-700">Inspection ID: <span id="reschedule_display_id" class="text-gray-900"></span></div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">New Inspection Date</label>
+                        <input type="date" name="new_date" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500">
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3 pt-4">
+                        <button type="button" onclick="closeModal('rescheduleModal')" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">Cancel</button>
+                        <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700">Reschedule</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Initialize Lucide icons
         lucide.createIcons();
@@ -648,12 +739,10 @@ function generateInspectionId($conn) {
         // Tab switching
         function switchTab(tab) {
             // Hide all content
-            document.getElementById('pending-content').classList.add('hidden');
             document.getElementById('scheduled-content').classList.add('hidden');
             document.getElementById('overdue-content').classList.add('hidden');
             
             // Reset all tabs
-            document.getElementById('pending-tab').className = 'py-4 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300';
             document.getElementById('scheduled-tab').className = 'py-4 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300';
             document.getElementById('overdue-tab').className = 'py-4 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300';
             
@@ -693,13 +782,45 @@ function generateInspectionId($conn) {
         }
 
         // Modal functions
-        function openScheduleModal() {
+        function openNewScheduleModal() {
+            // Reset form for new scheduling
+            document.getElementById('operator_select').style.display = 'block';
+            document.getElementById('vehicle_select').style.display = 'block';
+            document.getElementById('selected_info').classList.add('hidden');
+            
+            // Reset form values
+            document.getElementById('scheduleForm').reset();
+            document.getElementById('schedule_vehicle_id').value = '';
+            document.getElementById('schedule_operator_id').value = '';
+            
             document.getElementById('scheduleModal').classList.remove('hidden');
         }
 
         function scheduleInspectionModal(vehicleId, operatorId) {
+            // Set the selected vehicle and operator IDs
             document.getElementById('schedule_vehicle_id').value = vehicleId;
             document.getElementById('schedule_operator_id').value = operatorId;
+            
+            // Find and display operator and vehicle info from the table row
+            const rows = document.querySelectorAll('#pending-content tbody tr');
+            rows.forEach(row => {
+                const scheduleBtn = row.querySelector(`button[onclick*="${vehicleId}"]`);
+                if (scheduleBtn) {
+                    const operatorCell = row.cells[0];
+                    const vehicleCell = row.cells[1];
+                    
+                    const operatorName = operatorCell.querySelector('.text-sm.font-medium').textContent;
+                    const operatorId = operatorCell.querySelector('.text-sm.text-gray-500').textContent;
+                    const vehiclePlate = vehicleCell.querySelector('.text-sm.font-medium').textContent;
+                    const vehicleInfo = vehicleCell.querySelector('.text-sm.text-gray-500').textContent;
+                    
+                    document.getElementById('operator_display').textContent = `${operatorName} (${operatorId})`;
+                    document.getElementById('vehicle_display').textContent = `${vehiclePlate} - ${vehicleInfo}`;
+                }
+            });
+            
+            // Show selected info and open modal
+            document.getElementById('selected_info').classList.remove('hidden');
             document.getElementById('scheduleModal').classList.remove('hidden');
         }
 
@@ -725,12 +846,17 @@ function generateInspectionId($conn) {
             })
             .then(response => response.json())
             .then(data => {
+                console.log('Response:', data);
                 if (data.success) {
                     alert('Inspection scheduled successfully!');
                     location.reload();
                 } else {
                     alert('Error: ' + data.message);
                 }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Network error occurred');
             });
         });
 
@@ -756,28 +882,33 @@ function generateInspectionId($conn) {
         });
 
         function rescheduleModal(inspectionId) {
-            const newDate = prompt('Enter new inspection date (YYYY-MM-DD):');
-            if (newDate) {
-                const formData = new FormData();
-                formData.append('action', 'reschedule_inspection');
-                formData.append('inspection_id', inspectionId);
-                formData.append('new_date', newDate);
-                
-                fetch('', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Inspection rescheduled successfully!');
-                        location.reload();
-                    } else {
-                        alert('Error: ' + data.message);
-                    }
-                });
-            }
+            document.getElementById('reschedule_inspection_id').value = inspectionId;
+            document.getElementById('reschedule_display_id').textContent = inspectionId;
+            document.getElementById('rescheduleModal').classList.remove('hidden');
         }
+
+        // Reschedule form submission
+        document.getElementById('rescheduleForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            formData.append('action', 'reschedule_inspection');
+            
+            fetch('', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Inspection rescheduled successfully!');
+                    closeModal('rescheduleModal');
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            });
+        });
 
         // Enhanced sidebar toggle function with smooth animations
         function toggleSidebar() {

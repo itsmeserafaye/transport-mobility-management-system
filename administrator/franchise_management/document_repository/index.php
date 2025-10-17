@@ -5,7 +5,38 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/transport_and_mobility_management_sys
 $database = new Database();
 $conn = $database->getConnection();
 
-$stats = getStatistics($conn);
+// Document repository functions
+function getDocumentStatistics($db) {
+    $stats = [];
+    
+    // Total documents
+    $query = "SELECT COUNT(*) as total FROM document_repository";
+    $stmt = $db->prepare($query);
+    $stmt->execute();
+    $stats['total_documents'] = $stmt->fetchColumn();
+    
+    // Verified documents
+    $query = "SELECT COUNT(*) as total FROM document_repository WHERE verification_status = 'verified'";
+    $stmt = $db->prepare($query);
+    $stmt->execute();
+    $stats['verified'] = $stmt->fetchColumn();
+    
+    // Pending documents
+    $query = "SELECT COUNT(*) as total FROM document_repository WHERE verification_status = 'pending'";
+    $stmt = $db->prepare($query);
+    $stmt->execute();
+    $stats['pending'] = $stmt->fetchColumn();
+    
+    // Expiring soon (within 30 days)
+    $query = "SELECT COUNT(*) as total FROM document_repository WHERE expiry_date IS NOT NULL AND expiry_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) AND expiry_date > CURDATE()";
+    $stmt = $db->prepare($query);
+    $stmt->execute();
+    $stats['expiring_soon'] = $stmt->fetchColumn();
+    
+    return $stats;
+}
+
+$stats = getDocumentStatistics($conn);
 $documents = getDocuments($conn);
 ?>
 <!DOCTYPE html>
@@ -95,7 +126,7 @@ $documents = getDocuments($conn);
                     <button onclick="toggleDropdown('vehicle-inspection')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
                         <div class="flex items-center">
                             <i data-lucide="clipboard-check" class="w-5 h-5 mr-3"></i>
-                            <span class="text-sm font-medium">Vehicle Inspection</span>
+                            <span class="text-sm font-medium">Vehicle Inspection & Registration</span>
                         </div>
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="vehicle-inspection-icon"></i>
                     </button>
@@ -103,6 +134,7 @@ $documents = getDocuments($conn);
                         <a href="../../vehicle_inspection_and_registration/inspection_scheduling/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Inspection Scheduling</a>
                         <a href="../../vehicle_inspection_and_registration/inspection_result_recording/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Result Recording</a>
                         <a href="../../vehicle_inspection_and_registration/inspection_history_tracking/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">History Tracking</a>
+                        <a href="../../vehicle_inspection_and_registration/vehicle_registration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">LTO Registration</a>
                     </div>
                 </div>
 
@@ -136,6 +168,20 @@ $documents = getDocuments($conn);
                         <a href="../../user_management/account_maintenance/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Account Maintenance</a>
                         <a href="../../user_management/roles_and_permissions/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Roles & Permissions</a>
                         <a href="../../user_management/audit_logs/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Audit Logs</a>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <button onclick="toggleDropdown('settings')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                        <div class="flex items-center">
+                            <i data-lucide="settings" class="w-5 h-5 mr-3"></i>
+                            <span class="text-sm font-medium">Settings</span>
+                        </div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="settings-icon"></i>
+                    </button>
+                    <div id="settings-menu" class="hidden ml-8 space-y-1">
+                        <a href="../../settings/system_configuration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">System Configuration</a>
+                        <a href="../../settings/backup_and_restore/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Backup & Restore</a>
                     </div>
                 </div>
             </nav>
@@ -179,7 +225,7 @@ $documents = getDocuments($conn);
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-slate-500 text-sm">Total Documents</p>
-                                <p class="text-2xl font-bold text-blue-600">6</p>
+                                <p class="text-2xl font-bold text-blue-600"><?php echo $stats['total_documents']; ?></p>
                             </div>
                             <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                                 <i data-lucide="file" class="w-6 h-6 text-blue-600"></i>
@@ -190,7 +236,7 @@ $documents = getDocuments($conn);
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-slate-500 text-sm">Verified</p>
-                                <p class="text-2xl font-bold text-green-600">5</p>
+                                <p class="text-2xl font-bold text-green-600"><?php echo $stats['verified']; ?></p>
                             </div>
                             <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                                 <i data-lucide="check-circle" class="w-6 h-6 text-green-600"></i>
@@ -201,7 +247,7 @@ $documents = getDocuments($conn);
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-slate-500 text-sm">Pending</p>
-                                <p class="text-2xl font-bold text-yellow-600">1</p>
+                                <p class="text-2xl font-bold text-yellow-600"><?php echo $stats['pending']; ?></p>
                             </div>
                             <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
                                 <i data-lucide="clock" class="w-6 h-6 text-yellow-600"></i>
@@ -212,7 +258,7 @@ $documents = getDocuments($conn);
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-slate-500 text-sm">Expiring Soon</p>
-                                <p class="text-2xl font-bold text-red-600">2</p>
+                                <p class="text-2xl font-bold text-red-600"><?php echo $stats['expiring_soon']; ?></p>
                             </div>
                             <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
                                 <i data-lucide="alert-triangle" class="w-6 h-6 text-red-600"></i>
@@ -363,9 +409,11 @@ $documents = getDocuments($conn);
                                             <button onclick="downloadDocument('<?php echo $doc['document_id']; ?>')" class="p-1 text-green-600 hover:bg-green-100 rounded" title="Download">
                                                 <i data-lucide="download" class="w-4 h-4"></i>
                                             </button>
+                                            <?php if ($doc['verification_status'] !== 'verified'): ?>
                                             <button onclick="verifyDocument('<?php echo $doc['document_id']; ?>')" class="p-1 text-orange-600 hover:bg-orange-100 rounded" title="Verify">
                                                 <i data-lucide="check" class="w-4 h-4"></i>
                                             </button>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>
@@ -630,16 +678,23 @@ $documents = getDocuments($conn);
                         <form id="uploadDocumentForm" enctype="multipart/form-data">
                             <div class="space-y-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Operator ID</label>
-                                    <input type="text" name="operator_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300" required>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Operator</label>
+                                    <select name="operator_id" id="operatorSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300" onchange="checkVehicleRequirement()" required>
+                                        <option value="">Select Operator</option>
+                                        <?php 
+                                        $op_query = "SELECT operator_id, first_name, last_name FROM operators ORDER BY first_name";
+                                        $op_stmt = $conn->prepare($op_query);
+                                        $op_stmt->execute();
+                                        $operators = $op_stmt->fetchAll(PDO::FETCH_ASSOC);
+                                        foreach ($operators as $op): ?>
+                                        <option value="<?php echo $op['operator_id']; ?>"><?php echo $op['operator_id'] . ' - ' . $op['first_name'] . ' ' . $op['last_name']; ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
                                 </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Vehicle ID (Optional)</label>
-                                    <input type="text" name="vehicle_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300">
-                                </div>
+
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Document Category</label>
-                                    <select name="document_category" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300" required>
+                                    <select name="document_category" id="categorySelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300" onchange="checkVehicleRequirement()" required>
                                         <option value="">Select Category</option>
                                         <option value="legal">Legal</option>
                                         <option value="permit">Permit</option>
@@ -647,6 +702,13 @@ $documents = getDocuments($conn);
                                         <option value="insurance">Insurance</option>
                                         <option value="certificate">Certificate</option>
                                         <option value="clearance">Clearance</option>
+                                    </select>
+                                </div>
+
+                                <div id="vehicleSelectDiv" class="hidden">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Vehicle</label>
+                                    <select name="vehicle_id" id="vehicleSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-300">
+                                        <option value="">Select Vehicle</option>
                                     </select>
                                 </div>
                                 <div>
@@ -709,6 +771,47 @@ $documents = getDocuments($conn);
             });
         }
         
+        function checkVehicleRequirement() {
+            const operatorId = document.getElementById('operatorSelect').value;
+            const category = document.getElementById('categorySelect').value;
+            const vehicleDiv = document.getElementById('vehicleSelectDiv');
+            const vehicleSelect = document.getElementById('vehicleSelect');
+            
+            // Categories that require vehicle selection
+            const vehicleSpecificCategories = ['insurance', 'certificate', 'permit'];
+            
+            if (operatorId && vehicleSpecificCategories.includes(category)) {
+                // Load vehicles for the operator
+                fetch(`../franchise_application_workflow/get_operator_vehicles.php?operator_id=${operatorId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.vehicles.length > 0) {
+                            vehicleSelect.innerHTML = '<option value="">Select Vehicle</option>' +
+                                data.vehicles.map(vehicle => 
+                                    `<option value="${vehicle.vehicle_id}">${vehicle.plate_number} - ${vehicle.vehicle_type} (${vehicle.make} ${vehicle.model})</option>`
+                                ).join('');
+                            vehicleDiv.classList.remove('hidden');
+                            vehicleSelect.required = true;
+                        } else {
+                            vehicleSelect.innerHTML = '<option value="">No vehicles found</option>';
+                            vehicleDiv.classList.remove('hidden');
+                            vehicleSelect.required = false;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading vehicles:', error);
+                        vehicleSelect.innerHTML = '<option value="">Error loading vehicles</option>';
+                        vehicleDiv.classList.remove('hidden');
+                        vehicleSelect.required = false;
+                    });
+            } else {
+                // Hide vehicle dropdown for operator-level documents
+                vehicleDiv.classList.add('hidden');
+                vehicleSelect.required = false;
+                vehicleSelect.value = '';
+            }
+        }
+
         function uploadDocument(form) {
             const formData = new FormData(form);
             

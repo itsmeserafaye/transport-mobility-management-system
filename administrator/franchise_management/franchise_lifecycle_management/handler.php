@@ -187,9 +187,9 @@ function amendFranchise($db, $lifecycle_id, $amendment_type, $reason, $processed
         $stmt->execute([$processed_by, $lifecycle_id]);
         
         // Add lifecycle action record
-        $action_id = generateActionId($db);
+        $action_id = 'LA-' . date('Y') . '-' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
         $query2 = "INSERT INTO lifecycle_actions (action_id, lifecycle_id, action_type, action_date, reason, processed_by) 
-                   VALUES (?, ?, 'amendment', CURDATE(), ?, ?)";
+                   VALUES (?, ?, 'amend', CURDATE(), ?, ?)";
         $stmt2 = $db->prepare($query2);
         $stmt2->execute([$action_id, $lifecycle_id, $reason, $processed_by]);
         
@@ -220,9 +220,9 @@ function suspendFranchise($db, $lifecycle_id, $reason, $processed_by) {
         $stmt2->execute([$processed_by, $lifecycle_id]);
         
         // Add lifecycle action record
-        $action_id = generateActionId($db);
+        $action_id = 'LA-' . date('Y') . '-' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
         $query3 = "INSERT INTO lifecycle_actions (action_id, lifecycle_id, action_type, action_date, reason, processed_by) 
-                   VALUES (?, ?, 'suspension', CURDATE(), ?, ?)";
+                   VALUES (?, ?, 'suspend', CURDATE(), ?, ?)";
         $stmt3 = $db->prepare($query3);
         $stmt3->execute([$action_id, $lifecycle_id, $reason, $processed_by]);
         
@@ -253,9 +253,9 @@ function revokeFranchise($db, $lifecycle_id, $reason, $processed_by) {
         $stmt2->execute([$processed_by, $lifecycle_id]);
         
         // Add lifecycle action record
-        $action_id = generateActionId($db);
+        $action_id = 'LA-' . date('Y') . '-' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
         $query3 = "INSERT INTO lifecycle_actions (action_id, lifecycle_id, action_type, action_date, reason, processed_by) 
-                   VALUES (?, ?, 'revocation', CURDATE(), ?, ?)";
+                   VALUES (?, ?, 'revoke', CURDATE(), ?, ?)";
         $stmt3 = $db->prepare($query3);
         $stmt3->execute([$action_id, $lifecycle_id, $reason, $processed_by]);
         

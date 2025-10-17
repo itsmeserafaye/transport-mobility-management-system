@@ -10,7 +10,7 @@ function filterComplianceStatus($db, $filters = []) {
               FROM compliance_status cs
               JOIN operators o ON cs.operator_id = o.operator_id
               JOIN vehicles v ON cs.vehicle_id = v.vehicle_id
-              LEFT JOIN franchise_records fr ON cs.operator_id = fr.operator_id
+              LEFT JOIN franchise_records fr ON cs.operator_id = fr.operator_id AND cs.vehicle_id = fr.vehicle_id
               WHERE 1=1";
     
     $params = [];
@@ -128,7 +128,7 @@ function generateDetailedReport($db) {
               FROM compliance_status cs
               JOIN operators o ON cs.operator_id = o.operator_id
               JOIN vehicles v ON cs.vehicle_id = v.vehicle_id
-              LEFT JOIN franchise_records fr ON cs.operator_id = fr.operator_id
+              LEFT JOIN franchise_records fr ON cs.operator_id = fr.operator_id AND cs.vehicle_id = fr.vehicle_id
               ORDER BY cs.compliance_score ASC, cs.violation_count DESC";
     
     $stmt = $db->prepare($query);
@@ -252,13 +252,11 @@ function getStatistics($db) {
     $query = "SELECT 
                 COUNT(*) as total,
                 SUM(CASE 
-                    WHEN (COALESCE(cs.compliance_score, 0) >= 80 
-                          AND COALESCE(cs.franchise_status, 'valid') = 'valid' 
-                          AND COALESCE(cs.inspection_status, 'passed') = 'passed') 
+                    WHEN (compliance_score >= 80 
+                          AND franchise_status = 'valid' 
+                          AND inspection_status = 'passed') 
                     THEN 1 ELSE 0 END) as compliant
-              FROM operators o
-              LEFT JOIN vehicles v ON o.operator_id = v.operator_id
-              LEFT JOIN compliance_status cs ON o.operator_id = cs.operator_id";
+              FROM compliance_status";
     $stmt = $db->prepare($query);
     $stmt->execute();
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -325,7 +323,7 @@ function getComplianceStatus($db) {
               FROM compliance_status cs
               JOIN operators o ON cs.operator_id = o.operator_id
               JOIN vehicles v ON cs.vehicle_id = v.vehicle_id
-              LEFT JOIN franchise_records fr ON cs.operator_id = fr.operator_id
+              LEFT JOIN franchise_records fr ON cs.operator_id = fr.operator_id AND cs.vehicle_id = fr.vehicle_id
               LEFT JOIN violation_analytics va ON cs.operator_id = va.operator_id AND cs.vehicle_id = va.vehicle_id
               ORDER BY cs.updated_at DESC
               LIMIT 50";
@@ -346,7 +344,7 @@ function getComplianceById($db, $compliance_id) {
               FROM compliance_status cs
               JOIN operators o ON cs.operator_id = o.operator_id
               JOIN vehicles v ON cs.vehicle_id = v.vehicle_id
-              LEFT JOIN franchise_records fr ON cs.operator_id = fr.operator_id
+              LEFT JOIN franchise_records fr ON cs.operator_id = fr.operator_id AND cs.vehicle_id = fr.vehicle_id
               LEFT JOIN violation_analytics va ON cs.operator_id = va.operator_id AND cs.vehicle_id = va.vehicle_id
               WHERE cs.compliance_id = ?";
     
@@ -354,6 +352,9 @@ function getComplianceById($db, $compliance_id) {
     $stmt->execute([$compliance_id]);
     return $stmt->fetch(PDO::FETCH_ASSOC);
 }
+
+
+
 
 
 

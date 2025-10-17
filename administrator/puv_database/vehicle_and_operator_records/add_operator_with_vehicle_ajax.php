@@ -14,35 +14,53 @@ $conn = $database->getConnection();
 try {
     $conn->beginTransaction();
     
-    // Insert operator
-    $stmt = $conn->prepare("INSERT INTO operators (first_name, last_name, address, contact_number, license_number, license_expiry, status) VALUES (?, ?, ?, ?, ?, ?, 'active')");
-    $stmt->execute([
-        $_POST['first_name'],
-        $_POST['last_name'],
-        $_POST['address'],
-        $_POST['contact_number'],
-        $_POST['license_number'],
-        $_POST['license_expiry']
-    ]);
+    // Generate IDs
+    $operator_id = generateOperatorId($conn);
+    $vehicle_id = generateVehicleId($conn);
     
-    $operator_id = $conn->lastInsertId();
+    // Insert operator
+    $operator_data = [
+        'operator_id' => $operator_id,
+        'first_name' => $_POST['first_name'],
+        'last_name' => $_POST['last_name'],
+        'address' => $_POST['address'],
+        'contact_number' => $_POST['contact_number'],
+        'license_number' => $_POST['license_number'],
+        'license_expiry' => $_POST['license_expiry']
+    ];
+    
+    if (!addOperator($conn, $operator_data)) {
+        throw new Exception('Failed to add operator');
+    }
     
     // Insert vehicle
-    $stmt = $conn->prepare("INSERT INTO vehicles (operator_id, plate_number, vehicle_type, make, model, year_manufactured, engine_number, chassis_number, seating_capacity, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')");
-    $stmt->execute([
-        $operator_id,
-        $_POST['plate_number'],
-        $_POST['vehicle_type'],
-        $_POST['make'],
-        $_POST['model'],
-        $_POST['year_manufactured'],
-        $_POST['engine_number'],
-        $_POST['chassis_number'],
-        $_POST['seating_capacity']
-    ]);
+    $vehicle_data = [
+        'vehicle_id' => $vehicle_id,
+        'operator_id' => $operator_id,
+        'plate_number' => $_POST['plate_number'],
+        'vehicle_type' => $_POST['vehicle_type'],
+        'make' => $_POST['make'],
+        'model' => $_POST['model'],
+        'year_manufactured' => $_POST['year_manufactured'],
+        'engine_number' => $_POST['engine_number'],
+        'chassis_number' => $_POST['chassis_number'],
+        'seating_capacity' => $_POST['seating_capacity']
+    ];
+    
+    if (!addVehicle($conn, $vehicle_data)) {
+        throw new Exception('Failed to add vehicle');
+    }
+    
+    // Create compliance status record
+    $compliance_id = 'CS-' . date('Y') . '-' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
+    $compliance_query = "INSERT INTO compliance_status (compliance_id, operator_id, vehicle_id, franchise_status, inspection_status, violation_count, compliance_score) VALUES (?, ?, ?, 'pending', 'pending', 0, 75.00)";
+    $compliance_stmt = $conn->prepare($compliance_query);
+    if (!$compliance_stmt->execute([$compliance_id, $operator_id, $vehicle_id])) {
+        throw new Exception('Failed to create compliance status');
+    }
     
     $conn->commit();
-    echo json_encode(['success' => true, 'message' => 'Operator and vehicle added successfully']);
+    echo json_encode(['success' => true, 'message' => 'Operator, vehicle, and compliance status added successfully', 'operator_id' => $operator_id, 'vehicle_id' => $vehicle_id]);
     
 } catch (Exception $e) {
     $conn->rollback();

@@ -16,15 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['success' => $result]);
             exit;
             
-        case 'generate_analytics':
-            $filters = [
-                'date_from' => $_POST['date_from'] ?? null,
-                'date_to' => $_POST['date_to'] ?? null,
-                'risk_level' => $_POST['risk_level'] ?? null
-            ];
-            $analytics = generateViolationAnalytics($conn, $filters);
-            echo json_encode(['success' => true, 'data' => $analytics]);
-            exit;
+
             
         case 'update_enforcement':
             $result = updateEnforcementRecommendation($conn, $_POST['operator_id'], $_POST['recommendation']);
@@ -157,106 +149,7 @@ function linkViolationToDatabase($conn, $digitized_id, $operator_id, $vehicle_id
     }
 }
 
-function generateViolationAnalytics($conn, $filters = []) {
-    $analytics = [];
-    
-    // Base query for violation analytics
-    $query = "SELECT 
-                va.operator_id,
-                va.vehicle_id,
-                o.first_name,
-                o.last_name,
-                v.plate_number,
-                v.vehicle_type,
-                va.total_violations,
-                va.compliance_score,
-                va.risk_level,
-                va.repeat_offender_flag,
-                va.last_violation_date,
-                COUNT(vh.violation_id) as recent_violations
-              FROM violation_analytics va
-              JOIN operators o ON va.operator_id = o.operator_id
-              JOIN vehicles v ON va.vehicle_id = v.vehicle_id
-              LEFT JOIN violation_history vh ON va.operator_id = vh.operator_id";
-    
-    $where_conditions = [];
-    $params = [];
-    
-    // Apply date filters
-    if (!empty($filters['date_from'])) {
-        $where_conditions[] = "vh.violation_date >= :date_from";
-        $params['date_from'] = $filters['date_from'];
-    }
-    
-    if (!empty($filters['date_to'])) {
-        $where_conditions[] = "vh.violation_date <= :date_to";
-        $params['date_to'] = $filters['date_to'];
-    }
-    
-    // Apply risk level filter
-    if (!empty($filters['risk_level'])) {
-        $where_conditions[] = "va.risk_level = :risk_level";
-        $params['risk_level'] = $filters['risk_level'];
-    }
-    
-    if (!empty($where_conditions)) {
-        $query .= " WHERE " . implode(" AND ", $where_conditions);
-    }
-    
-    $query .= " GROUP BY va.operator_id, va.vehicle_id, o.first_name, o.last_name, v.plate_number, v.vehicle_type, va.total_violations, va.compliance_score, va.risk_level, va.repeat_offender_flag, va.last_violation_date
-                ORDER BY va.total_violations DESC, va.compliance_score ASC";
-    
-    $stmt = $conn->prepare($query);
-    $stmt->execute($params);
-    $analytics['detailed_analytics'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // Generate summary statistics
-    $summary_query = "SELECT 
-                        COUNT(DISTINCT va.operator_id) as total_operators,
-                        AVG(va.compliance_score) as avg_compliance_score,
-                        COUNT(CASE WHEN va.risk_level = 'high' THEN 1 END) as high_risk_count,
-                        COUNT(CASE WHEN va.risk_level = 'medium' THEN 1 END) as medium_risk_count,
-                        COUNT(CASE WHEN va.risk_level = 'low' THEN 1 END) as low_risk_count,
-                        COUNT(CASE WHEN va.repeat_offender_flag = 1 THEN 1 END) as repeat_offenders
-                      FROM violation_analytics va";
-    
-    if (!empty($filters['risk_level'])) {
-        $summary_query .= " WHERE va.risk_level = :risk_level";
-    }
-    
-    $stmt = $conn->prepare($summary_query);
-    if (!empty($filters['risk_level'])) {
-        $stmt->execute(['risk_level' => $filters['risk_level']]);
-    } else {
-        $stmt->execute();
-    }
-    $analytics['summary'] = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    // Generate violation trends by month
-    $trends_query = "SELECT 
-                        DATE_FORMAT(vh.violation_date, '%Y-%m') as month,
-                        COUNT(*) as violation_count,
-                        COUNT(DISTINCT vh.operator_id) as unique_operators
-                     FROM violation_history vh
-                     WHERE vh.violation_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)";
-    
-    if (!empty($filters['date_from']) && !empty($filters['date_to'])) {
-        $trends_query .= " AND vh.violation_date BETWEEN :date_from AND :date_to";
-    }
-    
-    $trends_query .= " GROUP BY DATE_FORMAT(vh.violation_date, '%Y-%m')
-                       ORDER BY month DESC";
-    
-    $stmt = $conn->prepare($trends_query);
-    if (!empty($filters['date_from']) && !empty($filters['date_to'])) {
-        $stmt->execute(['date_from' => $filters['date_from'], 'date_to' => $filters['date_to']]);
-    } else {
-        $stmt->execute();
-    }
-    $analytics['trends'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    return $analytics;
-}
+
 
 function updateEnforcementRecommendation($conn, $operator_id, $recommendation) {
     try {
@@ -340,9 +233,9 @@ function updateEnforcementRecommendation($conn, $operator_id, $recommendation) {
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="violation-ticketing-icon" style="transform: rotate(180deg);"></i>
                     </button>
                     <div id="violation-ticketing-menu" class="ml-8 space-y-1">
-                        <a href="../../traffic_violation_ticketing/violation_record_management/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Violation Record Management</a>
-                        <a href="../../traffic_violation_ticketing/linking_and_analytics/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">TVT Analytics</a>
-                        <a href="../../traffic_violation_ticketing/revenue_integration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Revenue Integration</a>
+                        <a href="../violation_record_management/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Violation Record Management</a>
+                        <a href="../linking_and_analytics/" class="block p-2 text-sm rounded-lg font-medium" style="color: #4CAF50; background-color: rgba(76, 175, 80, 0.2);">TVT Analytics</a>
+                        <a href="../revenue_integration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Revenue Integration</a>
                     </div>
                 </div>
 
@@ -350,7 +243,7 @@ function updateEnforcementRecommendation($conn, $operator_id, $recommendation) {
                     <button onclick="toggleDropdown('vehicle-inspection')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
                         <div class="flex items-center">
                             <i data-lucide="clipboard-check" class="w-5 h-5 mr-3"></i>
-                            <span class="text-sm font-medium">Vehicle Inspection</span>
+                            <span class="text-sm font-medium">Vehicle Inspection & Registration</span>
                         </div>
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="vehicle-inspection-icon"></i>
                     </button>
@@ -358,6 +251,7 @@ function updateEnforcementRecommendation($conn, $operator_id, $recommendation) {
                         <a href="../../vehicle_inspection_and_registration/inspection_scheduling/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Inspection Scheduling</a>
                         <a href="../../vehicle_inspection_and_registration/inspection_result_recording/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Result Recording</a>
                         <a href="../../vehicle_inspection_and_registration/inspection_history_tracking/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">History Tracking</a>
+                        <a href="../../vehicle_inspection_and_registration/vehicle_registration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">LTO Registration</a>
                     </div>
                 </div>
 
@@ -385,11 +279,25 @@ function updateEnforcementRecommendation($conn, $operator_id, $recommendation) {
                         <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="user-mgmt-icon"></i>
                     </button>
                     <div id="user-mgmt-menu" class="hidden ml-8 space-y-1">
-                        <a href="../../user_management/account_registry/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Account Registry</a>
-                        <a href="../../user_management/verification_queue/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Verification Queue</a>
-                        <a href="../../user_management/account_maintenance/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Account Maintenance</a>
-                        <a href="../../user_management/roles_and_permissions/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Roles & Permissions</a>
-                        <a href="../../user_management/audit_logs/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Audit Logs</a>
+                        <a href="../../user_management/account_registry/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Account Registry</a>
+                        <a href="../../user_management/verification_queue/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Verification Queue</a>
+                        <a href="../../user_management/account_maintenance/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Account Maintenance</a>
+                        <a href="../../user_management/roles_and_permissions/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Roles & Permissions</a>
+                        <a href="../../user_management/audit_logs/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Audit Logs</a>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <button onclick="toggleDropdown('settings')" class="w-full flex items-center justify-between p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                        <div class="flex items-center">
+                            <i data-lucide="settings" class="w-5 h-5 mr-3"></i>
+                            <span class="text-sm font-medium">Settings</span>
+                        </div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="settings-icon"></i>
+                    </button>
+                    <div id="settings-menu" class="hidden ml-8 space-y-1">
+                        <a href="../../settings/system_configuration/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">System Configuration</a>
+                        <a href="../../settings/backup_and_restore/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Backup & Restore</a>
                     </div>
                 </div>
             </nav>
@@ -458,13 +366,7 @@ function updateEnforcementRecommendation($conn, $operator_id, $recommendation) {
                     </div>
                 </div>
 
-                <!-- Generate Analytics Button -->
-                <div class="mb-6">
-                    <button onclick="generateAnalytics()" class="px-4 py-2 text-white rounded-lg flex items-center space-x-2 transition-colors" style="background-color: #4CAF50;" onmouseover="this.style.backgroundColor='#45A049'" onmouseout="this.style.backgroundColor='#4CAF50'">
-                        <i data-lucide="bar-chart" class="h-4 w-4"></i>
-                        <span>Generate Analytics</span>
-                    </button>
-                </div>
+
 
                 <!-- Tabs -->
                 <div class="bg-white rounded-lg shadow">
@@ -725,27 +627,7 @@ function updateEnforcementRecommendation($conn, $operator_id, $recommendation) {
             }
         }
 
-        function generateAnalytics() {
-            const formData = new FormData();
-            formData.append('action', 'generate_analytics');
-            
-            fetch('', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Analytics generated successfully! Data refreshed.');
-                    location.reload();
-                } else {
-                    alert('Error generating analytics: ' + (data.message || 'Unknown error'));
-                }
-            })
-            .catch(error => {
-                alert('Error: ' + error.message);
-            });
-        }
+
 
         function linkAllTickets() {
             if (confirm('Auto-link all unlinked tickets? This may take a few minutes.')) {

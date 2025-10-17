@@ -37,12 +37,12 @@ class Database {
 
 // Database helper functions
 function getOperators($conn, $limit = 10, $offset = 0) {
-    $query = "SELECT o.*, v.plate_number, v.vehicle_type, v.make, v.model, 
+    $query = "SELECT o.*, v.plate_number, v.vehicle_type, v.make, v.model, v.vehicle_id,
               cs.compliance_score, cs.franchise_status, cs.inspection_status
               FROM operators o 
               LEFT JOIN vehicles v ON o.operator_id = v.operator_id
-              LEFT JOIN compliance_status cs ON o.operator_id = cs.operator_id
-              ORDER BY o.date_registered DESC
+              LEFT JOIN compliance_status cs ON o.operator_id = cs.operator_id AND v.vehicle_id = cs.vehicle_id
+              ORDER BY o.date_registered DESC, v.vehicle_id
               LIMIT :limit OFFSET :offset";
     $stmt = $conn->prepare($query);
     $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
@@ -77,11 +77,11 @@ function getVehiclesByOperator($conn, $operator_id) {
 }
 
 function searchOperators($conn, $search_term, $status = null, $vehicle_type = null, $compliance_filter = null, $date_filter = null) {
-    $query = "SELECT o.*, v.plate_number, v.vehicle_type, v.make, v.model, 
+    $query = "SELECT o.*, v.plate_number, v.vehicle_type, v.make, v.model, v.vehicle_id,
               cs.compliance_score, cs.franchise_status, cs.inspection_status
               FROM operators o 
               LEFT JOIN vehicles v ON o.operator_id = v.operator_id
-              LEFT JOIN compliance_status cs ON o.operator_id = cs.operator_id
+              LEFT JOIN compliance_status cs ON o.operator_id = cs.operator_id AND v.vehicle_id = cs.vehicle_id
               WHERE 1=1";
     
     $params = [];
@@ -117,7 +117,7 @@ function searchOperators($conn, $search_term, $status = null, $vehicle_type = nu
         $params['date_filter'] = $date_filter;
     }
     
-    $query .= " ORDER BY o.date_registered DESC";
+    $query .= " ORDER BY o.date_registered DESC, v.vehicle_id";
     
     $stmt = $conn->prepare($query);
     $stmt->execute($params);
@@ -130,8 +130,6 @@ function getTotalOperators($conn) {
     $stmt->execute();
     return $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 }
-
-// Note: getComplianceStatus function moved to compliance_status_management/functions.php
 
 function getViolationHistory($conn) {
     $query = "SELECT vh.*, o.first_name, o.last_name, v.plate_number, v.vehicle_type, v.make, v.model,
@@ -146,9 +144,6 @@ function getViolationHistory($conn) {
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-// Note: getStatistics function moved to compliance_status_management/functions.php
-
-// Additional utility functions for vehicle and operator records
 function addOperator($conn, $data) {
     $query = "INSERT INTO operators (operator_id, first_name, last_name, address, contact_number, license_number, license_expiry) 
               VALUES (:operator_id, :first_name, :last_name, :address, :contact_number, :license_number, :license_expiry)";
@@ -165,7 +160,6 @@ function updateOperator($conn, $operator_id, $data) {
         $data['operator_id'] = $operator_id;
         $result = $stmt->execute($data);
         
-        // Check if any rows were affected
         if ($result && $stmt->rowCount() > 0) {
             return true;
         } else {
@@ -178,20 +172,33 @@ function updateOperator($conn, $operator_id, $data) {
     }
 }
 
-function deleteOperator($conn, $operator_id) {
-    $query = "DELETE FROM operators WHERE operator_id = :operator_id";
-    $stmt = $conn->prepare($query);
-    $stmt->bindParam(':operator_id', $operator_id);
-    return $stmt->execute();
-}
-
 function addVehicle($conn, $data) {
-    $query = "INSERT INTO vehicles (vehicle_id, operator_id, plate_number, vehicle_type, make, model, 
-              year_manufactured, engine_number, chassis_number, seating_capacity) 
-              VALUES (:vehicle_id, :operator_id, :plate_number, :vehicle_type, :make, :model, 
-              :year_manufactured, :engine_number, :chassis_number, :seating_capacity)";
-    $stmt = $conn->prepare($query);
-    return $stmt->execute($data);
+    try {
+        $conn->beginTransaction();
+        
+        $query = "INSERT INTO vehicles (vehicle_id, operator_id, plate_number, vehicle_type, make, model, 
+                  year_manufactured, engine_number, chassis_number, seating_capacity) 
+                  VALUES (:vehicle_id, :operator_id, :plate_number, :vehicle_type, :make, :model, 
+                  :year_manufactured, :engine_number, :chassis_number, :seating_capacity)";
+        $stmt = $conn->prepare($query);
+        $stmt->execute($data);
+        
+        $compliance_id = generateComplianceId($conn);
+        $compliance_query = "INSERT INTO compliance_status (compliance_id, operator_id, vehicle_id, franchise_status, inspection_status, violation_count, compliance_score) 
+                            VALUES (:compliance_id, :operator_id, :vehicle_id, 'pending', 'pending', 0, 75.00)";
+        $compliance_stmt = $conn->prepare($compliance_query);
+        $compliance_stmt->execute([
+            'compliance_id' => $compliance_id,
+            'operator_id' => $data['operator_id'],
+            'vehicle_id' => $data['vehicle_id']
+        ]);
+        
+        $conn->commit();
+        return true;
+    } catch (Exception $e) {
+        $conn->rollback();
+        return false;
+    }
 }
 
 function generateOperatorId($conn) {
@@ -212,604 +219,133 @@ function generateVehicleId($conn) {
     return "VH-{$year}-{$next_id}";
 }
 
-// Compliance Status Management Functions
-// Note: updateComplianceStatus function moved to compliance_status_management/functions.php
-
-// Note: generateComplianceReport and getComplianceById functions moved to compliance_status_management/functions.php
-
-function exportComplianceData($conn, $format) {
-    $compliance_data = getComplianceStatus($conn);
-    
-    if ($format === 'csv') {
-        header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="compliance_' . date('Y-m-d') . '.csv"');
-        
-        $output = fopen('php://output', 'w');
-        fputcsv($output, ['Compliance ID', 'Operator', 'Vehicle', 'Franchise Status', 'Inspection Status', 'Compliance Score', 'Last Inspection', 'Next Due']);
-        
-        foreach ($compliance_data as $record) {
-            fputcsv($output, [
-                $record['compliance_id'],
-                $record['first_name'] . ' ' . $record['last_name'],
-                $record['plate_number'] . ' - ' . $record['vehicle_type'],
-                $record['franchise_status'],
-                $record['inspection_status'],
-                $record['compliance_score'],
-                $record['last_inspection_date'] ?? 'N/A',
-                $record['next_inspection_due'] ?? 'N/A'
-            ]);
-        }
-        fclose($output);
-    }
-    
-    return $compliance_data;
-}
-
-// Franchise Application Functions
-function getFranchiseApplications($conn) {
-    $query = "SELECT fa.*, o.first_name, o.last_name, v.plate_number, v.vehicle_type, v.make, v.model
-              FROM franchise_applications fa
-              JOIN operators o ON fa.operator_id = o.operator_id
-              JOIN vehicles v ON fa.vehicle_id = v.vehicle_id
-              ORDER BY fa.created_at DESC";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
-function getApplicationById($conn, $application_id) {
-    $query = "SELECT fa.*, o.first_name, o.last_name, v.plate_number, v.vehicle_type, v.make, v.model
-              FROM franchise_applications fa
-              JOIN operators o ON fa.operator_id = o.operator_id
-              JOIN vehicles v ON fa.vehicle_id = v.vehicle_id
-              WHERE fa.application_id = :application_id";
-    $stmt = $conn->prepare($query);
-    $stmt->bindParam(':application_id', $application_id);
-    $stmt->execute();
-    return $stmt->fetch(PDO::FETCH_ASSOC);
-}
-
-function updateApplicationStatus($conn, $application_id, $status, $workflow_stage, $assigned_to = null, $remarks = null) {
-    $query = "UPDATE franchise_applications SET status = :status, workflow_stage = :workflow_stage";
-    $params = ['status' => $status, 'workflow_stage' => $workflow_stage, 'application_id' => $application_id];
-    
-    if ($assigned_to) {
-        $query .= ", assigned_to = :assigned_to";
-        $params['assigned_to'] = $assigned_to;
-    }
-    if ($remarks) {
-        $query .= ", remarks = :remarks";
-        $params['remarks'] = $remarks;
-    }
-    
-    $query .= " WHERE application_id = :application_id";
-    $stmt = $conn->prepare($query);
-    return $stmt->execute($params);
-}
-
-function generateApplicationId($conn) {
+function generateComplianceId($conn) {
     $year = date('Y');
-    $query = "SELECT COUNT(*) + 1 as next_id FROM franchise_applications WHERE application_id LIKE 'FA-{$year}-%'";
+    $query = "SELECT COUNT(*) + 1 as next_id FROM compliance_status WHERE compliance_id LIKE 'CS-{$year}-%'";
     $stmt = $conn->prepare($query);
     $stmt->execute();
     $next_id = str_pad($stmt->fetch(PDO::FETCH_ASSOC)['next_id'], 3, '0', STR_PAD_LEFT);
-    return "FA-{$year}-{$next_id}";
+    return "CS-{$year}-{$next_id}";
 }
 
-// Document Repository Functions
-function getDocuments($conn) {
-    $query = "SELECT dr.*, o.first_name, o.last_name, v.plate_number, v.vehicle_type
-              FROM document_repository dr
-              JOIN operators o ON dr.operator_id = o.operator_id
-              LEFT JOIN vehicles v ON dr.vehicle_id = v.vehicle_id
-              ORDER BY dr.upload_date DESC";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
-function getDocumentById($conn, $document_id) {
-    $query = "SELECT dr.*, o.first_name, o.last_name, v.plate_number, v.vehicle_type
-              FROM document_repository dr
-              JOIN operators o ON dr.operator_id = o.operator_id
-              LEFT JOIN vehicles v ON dr.vehicle_id = v.vehicle_id
-              WHERE dr.document_id = :document_id";
-    $stmt = $conn->prepare($query);
-    $stmt->bindParam(':document_id', $document_id);
-    $stmt->execute();
-    return $stmt->fetch(PDO::FETCH_ASSOC);
-}
-
-function updateDocumentStatus($conn, $document_id, $verification_status, $verified_by = null, $remarks = null) {
-    $query = "UPDATE document_repository SET verification_status = :verification_status";
-    $params = ['verification_status' => $verification_status, 'document_id' => $document_id];
+// LTO Vehicle Registration Functions (Government Compliance)
+function addLTORegistration($conn, $data) {
+    $sql = "INSERT INTO lto_vehicle_registration (vehicle_id, operator_id, or_number, cr_number, plate_number, registration_type, registration_date, expiry_date, lto_office, fees_paid, status, document_path) 
+            VALUES (:vehicle_id, :operator_id, :or_number, :cr_number, :plate_number, :registration_type, :registration_date, :expiry_date, :lto_office, :fees_paid, :status, :document_path)";
     
-    if ($verified_by) {
-        $query .= ", verified_by = :verified_by, verification_date = NOW()";
-        $params['verified_by'] = $verified_by;
-    }
-    if ($remarks) {
-        $query .= ", remarks = :remarks";
-        $params['remarks'] = $remarks;
-    }
-    
-    $query .= " WHERE document_id = :document_id";
-    $stmt = $conn->prepare($query);
-    return $stmt->execute($params);
-}
-
-function generateDocumentId($conn) {
-    $year = date('Y');
-    $query = "SELECT COUNT(*) + 1 as next_id FROM document_repository WHERE document_id LIKE 'DOC-{$year}-%'";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    $next_id = str_pad($stmt->fetch(PDO::FETCH_ASSOC)['next_id'], 3, '0', STR_PAD_LEFT);
-    return "DOC-{$year}-{$next_id}";
-}
-
-// Franchise Lifecycle Functions
-function getFranchiseLifecycle($conn) {
-    $query = "SELECT fl.*, fr.franchise_number, fr.route_assigned, fr.status as franchise_status,
-                     o.first_name, o.last_name, v.plate_number, v.vehicle_type
-              FROM franchise_lifecycle fl
-              JOIN franchise_records fr ON fl.franchise_id = fr.franchise_id
-              JOIN operators o ON fl.operator_id = o.operator_id
-              JOIN vehicles v ON fl.vehicle_id = v.vehicle_id
-              ORDER BY fl.created_at DESC";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
-function updateFranchiseStatus($conn, $franchise_id, $status, $lifecycle_stage, $processed_by, $remarks = null) {
     try {
-        $conn->beginTransaction();
-        
-        // Update franchise record status
-        $query1 = "UPDATE franchise_records SET status = :status WHERE franchise_id = :franchise_id";
-        $stmt1 = $conn->prepare($query1);
-        $stmt1->execute(['status' => $status, 'franchise_id' => $franchise_id]);
-        
-        // Update lifecycle stage
-        $query2 = "UPDATE franchise_lifecycle SET lifecycle_stage = :lifecycle_stage, processed_by = :processed_by, remarks = :remarks WHERE franchise_id = :franchise_id";
-        $stmt2 = $conn->prepare($query2);
-        $stmt2->execute([
-            'lifecycle_stage' => $lifecycle_stage,
-            'processed_by' => $processed_by,
-            'remarks' => $remarks,
-            'franchise_id' => $franchise_id
-        ]);
-        
-        $conn->commit();
-        return true;
-    } catch (Exception $e) {
-        $conn->rollback();
+        $stmt = $conn->prepare($sql);
+        $stmt->execute($data);
+        return $conn->lastInsertId();
+    } catch(PDOException $e) {
         return false;
     }
 }
 
-function addLifecycleAction($conn, $lifecycle_id, $action_type, $reason, $processed_by, $effective_date = null) {
-    $action_id = generateActionId($conn);
-    $query = "INSERT INTO lifecycle_actions (action_id, lifecycle_id, action_type, action_date, reason, processed_by, effective_date) 
-              VALUES (:action_id, :lifecycle_id, :action_type, CURDATE(), :reason, :processed_by, :effective_date)";
-    $stmt = $conn->prepare($query);
-    return $stmt->execute([
-        'action_id' => $action_id,
-        'lifecycle_id' => $lifecycle_id,
-        'action_type' => $action_type,
-        'reason' => $reason,
-        'processed_by' => $processed_by,
-        'effective_date' => $effective_date
-    ]);
-}
-
-function generateActionId($conn) {
-    $year = date('Y');
-    $query = "SELECT COUNT(*) + 1 as next_id FROM lifecycle_actions WHERE action_id LIKE 'LA-{$year}-%'";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    $next_id = str_pad($stmt->fetch(PDO::FETCH_ASSOC)['next_id'], 3, '0', STR_PAD_LEFT);
-    return "LA-{$year}-{$next_id}";
-}
-
-// Route & Schedule Publication Functions
-function getRoutes($conn) {
-    $query = "SELECT r.*, COUNT(s.schedule_id) as schedule_count,
-              COUNT(CASE WHEN s.published_to_citizen = 1 THEN 1 END) as published_schedules
-              FROM official_routes r
-              LEFT JOIN route_schedules s ON r.route_id = s.route_id
-              GROUP BY r.route_id
-              ORDER BY r.created_at DESC";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
-function getRouteSchedules($conn) {
-    $query = "SELECT rs.*, r.route_name, r.route_code, o.first_name, o.last_name, v.plate_number, v.vehicle_type
-              FROM route_schedules rs
-              JOIN official_routes r ON rs.route_id = r.route_id
-              JOIN operators o ON rs.operator_id = o.operator_id
-              JOIN vehicles v ON rs.vehicle_id = v.vehicle_id
-              ORDER BY rs.created_at DESC";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
-function publishToCitizenPortal($conn, $schedule_id, $published_by) {
+function getLTORegistrations($conn) {
+    $sql = "SELECT lr.*, v.make, v.model, v.year, v.body_number, CONCAT(o.first_name, ' ', o.last_name) as operator_name 
+            FROM lto_vehicle_registration lr
+            LEFT JOIN vehicles v ON lr.vehicle_id = v.vehicle_id
+            LEFT JOIN operators o ON lr.operator_id = o.operator_id
+            ORDER BY lr.registration_date DESC";
+    
     try {
-        $conn->beginTransaction();
-        
-        // Update schedule as published
-        $query1 = "UPDATE route_schedules SET published_to_citizen = 1, published_date = NOW(), published_by = :published_by WHERE schedule_id = :schedule_id";
-        $stmt1 = $conn->prepare($query1);
-        $stmt1->execute(['published_by' => $published_by, 'schedule_id' => $schedule_id]);
-        
-        // Get route and schedule info
-        $query2 = "SELECT route_id FROM route_schedules WHERE schedule_id = :schedule_id";
-        $stmt2 = $conn->prepare($query2);
-        $stmt2->execute(['schedule_id' => $schedule_id]);
-        $route_id = $stmt2->fetch(PDO::FETCH_ASSOC)['route_id'];
-        
-        // Create publication record
-        $pub_id = generatePublicationId($conn);
-        $query3 = "INSERT INTO citizen_portal_publications (publication_id, route_id, schedule_id, publication_type, published_by) VALUES (:pub_id, :route_id, :schedule_id, 'both', :published_by)";
-        $stmt3 = $conn->prepare($query3);
-        $stmt3->execute([
-            'pub_id' => $pub_id,
-            'route_id' => $route_id,
-            'schedule_id' => $schedule_id,
-            'published_by' => $published_by
-        ]);
-        
-        $conn->commit();
-        return true;
-    } catch (Exception $e) {
-        $conn->rollback();
+        $stmt = $conn->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch(PDOException $e) {
+        return [];
+    }
+}
+
+function updateLTORegistration($conn, $id, $data) {
+    $sql = "UPDATE lto_vehicle_registration SET 
+            vehicle_id = :vehicle_id,
+            operator_id = :operator_id,
+            or_number = :or_number,
+            cr_number = :cr_number,
+            plate_number = :plate_number,
+            registration_type = :registration_type,
+            registration_date = :registration_date,
+            expiry_date = :expiry_date,
+            lto_office = :lto_office,
+            fees_paid = :fees_paid,
+            status = :status,
+            document_path = :document_path
+            WHERE lto_registration_id = :id";
+    
+    try {
+        $stmt = $conn->prepare($sql);
+        $data['id'] = $id;
+        return $stmt->execute($data);
+    } catch(PDOException $e) {
         return false;
     }
 }
 
-function generatePublicationId($conn) {
-    $year = date('Y');
-    $query = "SELECT COUNT(*) + 1 as next_id FROM citizen_portal_publications WHERE publication_id LIKE 'PUB-{$year}-%'";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    $next_id = str_pad($stmt->fetch(PDO::FETCH_ASSOC)['next_id'], 3, '0', STR_PAD_LEFT);
-    return "PUB-{$year}-{$next_id}";
+function deleteLTORegistration($conn, $id) {
+    $sql = "DELETE FROM lto_vehicle_registration WHERE lto_registration_id = :id";
+    
+    try {
+        $stmt = $conn->prepare($sql);
+        return $stmt->execute(['id' => $id]);
+    } catch(PDOException $e) {
+        return false;
+    }
 }
 
-// Enhanced Franchise Lifecycle Functions
-function getLifecycleStatistics($conn) {
+function getLTORegistrationStats($conn) {
     $stats = [];
     
-    // Active franchises
-    $query = "SELECT COUNT(*) as total FROM franchise_lifecycle WHERE lifecycle_stage = 'active'";
-    $stmt = $conn->prepare($query);
+    $sql = "SELECT COUNT(*) as total FROM lto_vehicle_registration";
+    $stmt = $conn->prepare($sql);
     $stmt->execute();
-    $stats['active_franchises'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    $stats['total'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     
-    // Due for renewal
-    $query = "SELECT COUNT(*) as total FROM franchise_lifecycle WHERE action_required = 'renewal' OR lifecycle_stage = 'renewal'";
-    $stmt = $conn->prepare($query);
+    $sql = "SELECT COUNT(*) as active FROM lto_vehicle_registration WHERE status = 'active'";
+    $stmt = $conn->prepare($sql);
     $stmt->execute();
-    $stats['due_for_renewal'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    $stats['active'] = $stmt->fetch(PDO::FETCH_ASSOC)['active'];
     
-    // Expired
-    $query = "SELECT COUNT(*) as total FROM franchise_lifecycle WHERE lifecycle_stage = 'expired'";
-    $stmt = $conn->prepare($query);
+    $sql = "SELECT COUNT(*) as expired FROM lto_vehicle_registration WHERE status = 'expired' OR expiry_date < CURDATE()";
+    $stmt = $conn->prepare($sql);
     $stmt->execute();
-    $stats['expired'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    $stats['expired'] = $stmt->fetch(PDO::FETCH_ASSOC)['expired'];
     
-    // Revoked
-    $query = "SELECT COUNT(*) as total FROM franchise_lifecycle WHERE lifecycle_stage = 'revocation'";
-    $stmt = $conn->prepare($query);
+    $sql = "SELECT COUNT(*) as expiring_soon FROM lto_vehicle_registration WHERE expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY) AND status = 'active'";
+    $stmt = $conn->prepare($sql);
     $stmt->execute();
-    $stats['revoked'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    $stats['expiring_soon'] = $stmt->fetch(PDO::FETCH_ASSOC)['expiring_soon'];
     
     return $stats;
 }
 
-function generateLifecycleId($conn) {
+function generateLTORegistrationId($conn) {
     $year = date('Y');
-    $query = "SELECT COUNT(*) + 1 as next_id FROM franchise_lifecycle WHERE lifecycle_id LIKE 'FL-{$year}-%'";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    $next_id = str_pad($stmt->fetch(PDO::FETCH_ASSOC)['next_id'], 3, '0', STR_PAD_LEFT);
-    return "FL-{$year}-{$next_id}";
-}
-
-// OCR Ticket Digitization Functions
-function getOCRScans($conn) {
-    $query = "SELECT os.*, COUNT(dt.digitized_id) as digitized_count
-              FROM ocr_ticket_scans os
-              LEFT JOIN digitized_tickets dt ON os.scan_id = dt.scan_id
-              GROUP BY os.scan_id
-              ORDER BY os.created_at DESC";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
-function getDigitizedTickets($conn) {
-    $query = "SELECT dt.*, os.ticket_image_path, os.ocr_confidence, o.first_name, o.last_name, v.vehicle_type
-              FROM digitized_tickets dt
-              JOIN ocr_ticket_scans os ON dt.scan_id = os.scan_id
-              LEFT JOIN operators o ON dt.operator_id = o.operator_id
-              LEFT JOIN vehicles v ON dt.vehicle_id = v.vehicle_id
-              ORDER BY dt.created_at DESC";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
-function getValidationQueue($conn) {
-    $query = "SELECT vq.*, os.ticket_image_path, dt.ticket_number, dt.plate_number
-              FROM ocr_validation_queue vq
-              JOIN ocr_ticket_scans os ON vq.scan_id = os.scan_id
-              LEFT JOIN digitized_tickets dt ON vq.digitized_id = dt.digitized_id
-              ORDER BY vq.priority DESC, vq.queue_date ASC";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
-function processOCRScan($conn, $scan_id, $processed_by) {
-    $query = "UPDATE ocr_ticket_scans SET ocr_status = 'processing', scanned_by = :processed_by WHERE scan_id = :scan_id";
-    $stmt = $conn->prepare($query);
-    return $stmt->execute(['processed_by' => $processed_by, 'scan_id' => $scan_id]);
-}
-
-function validateTicket($conn, $digitized_id, $validated_by, $status) {
-    $query = "UPDATE digitized_tickets SET status = :status, reviewed_by = :validated_by, review_date = NOW() WHERE digitized_id = :digitized_id";
-    $stmt = $conn->prepare($query);
-    return $stmt->execute(['status' => $status, 'validated_by' => $validated_by, 'digitized_id' => $digitized_id]);
-}
-
-function generateScanId($conn) {
-    $year = date('Y');
-    $query = "SELECT COUNT(*) + 1 as next_id FROM ocr_ticket_scans WHERE scan_id LIKE 'OCR-{$year}-%'";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    $next_id = str_pad($stmt->fetch(PDO::FETCH_ASSOC)['next_id'], 3, '0', STR_PAD_LEFT);
-    return "OCR-{$year}-{$next_id}";
-}
-
-// Violation Record Management Functions
-function getViolationRecords($conn) {
-    $query = "SELECT vh.*, o.first_name, o.last_name, v.plate_number, v.vehicle_type, v.make, v.model,
-              va.total_violations, va.risk_level, va.repeat_offender_flag
-              FROM violation_history vh
-              JOIN operators o ON vh.operator_id = o.operator_id
-              JOIN vehicles v ON vh.vehicle_id = v.vehicle_id
-              LEFT JOIN violation_analytics va ON vh.operator_id = va.operator_id AND vh.vehicle_id = va.vehicle_id
-              ORDER BY vh.violation_date DESC";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
-function getViolationById($conn, $violation_id) {
-    $query = "SELECT vh.*, o.first_name, o.last_name, o.status as operator_status,
-              v.plate_number, v.vehicle_type, v.make, v.model, v.status as vehicle_status,
-              va.total_violations, va.risk_level, va.repeat_offender_flag
-              FROM violation_history vh
-              JOIN operators o ON vh.operator_id = o.operator_id
-              JOIN vehicles v ON vh.vehicle_id = v.vehicle_id
-              LEFT JOIN violation_analytics va ON vh.operator_id = va.operator_id AND vh.vehicle_id = va.vehicle_id
-              WHERE vh.violation_id = :violation_id";
-    $stmt = $conn->prepare($query);
-    $stmt->bindParam(':violation_id', $violation_id);
-    $stmt->execute();
-    return $stmt->fetch(PDO::FETCH_ASSOC);
-}
-
-function addViolationRecord($conn, $data) {
-    try {
-        $conn->beginTransaction();
-        
-        // Insert violation record
-        $query = "INSERT INTO violation_history (violation_id, operator_id, vehicle_id, violation_type, 
-                  violation_date, fine_amount, settlement_status, location, ticket_number) 
-                  VALUES (:violation_id, :operator_id, :vehicle_id, :violation_type, 
-                  :violation_date, :fine_amount, :settlement_status, :location, :ticket_number)";
-        $stmt = $conn->prepare($query);
-        $stmt->execute($data);
-        
-        // Update violation analytics
-        updateViolationAnalytics($conn, $data['operator_id'], $data['vehicle_id']);
-        
-        // Update compliance status
-        updateComplianceViolationCount($conn, $data['operator_id'], $data['vehicle_id']);
-        
-        $conn->commit();
-        return true;
-    } catch (Exception $e) {
-        $conn->rollback();
-        return false;
-    }
-}
-
-function updateViolationRecord($conn, $violation_id, $data) {
-    $query = "UPDATE violation_history SET violation_type = :violation_type, violation_date = :violation_date,
-              fine_amount = :fine_amount, settlement_status = :settlement_status, location = :location
-              WHERE violation_id = :violation_id";
-    $data['violation_id'] = $violation_id;
-    $stmt = $conn->prepare($query);
-    return $stmt->execute($data);
-}
-
-function updateSettlementStatus($conn, $violation_id, $settlement_status, $settlement_date = null) {
-    $query = "UPDATE violation_history SET settlement_status = :settlement_status";
-    $params = ['settlement_status' => $settlement_status, 'violation_id' => $violation_id];
-    
-    if ($settlement_date) {
-        $query .= ", settlement_date = :settlement_date";
-        $params['settlement_date'] = $settlement_date;
-    }
-    
-    $query .= " WHERE violation_id = :violation_id";
-    $stmt = $conn->prepare($query);
-    return $stmt->execute($params);
-}
-
-function updateViolationAnalytics($conn, $operator_id, $vehicle_id) {
-    // Get total violations for this operator/vehicle
-    $query = "SELECT COUNT(*) as total, MAX(violation_date) as last_date FROM violation_history 
-              WHERE operator_id = :operator_id AND vehicle_id = :vehicle_id";
-    $stmt = $conn->prepare($query);
-    $stmt->execute(['operator_id' => $operator_id, 'vehicle_id' => $vehicle_id]);
-    $result = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    $total_violations = $result['total'];
-    $last_violation_date = $result['last_date'];
-    $repeat_offender = $total_violations >= 3;
-    $risk_level = $total_violations >= 5 ? 'high' : ($total_violations >= 3 ? 'medium' : 'low');
-    $compliance_score = max(0, 100 - ($total_violations * 10));
-    
-    // Update or insert analytics record
-    $query = "INSERT INTO violation_analytics (analytics_id, operator_id, vehicle_id, total_violations, 
-              last_violation_date, repeat_offender_flag, risk_level, compliance_score) 
-              VALUES (:analytics_id, :operator_id, :vehicle_id, :total_violations, 
-              :last_violation_date, :repeat_offender_flag, :risk_level, :compliance_score)
-              ON DUPLICATE KEY UPDATE 
-              total_violations = :total_violations, last_violation_date = :last_violation_date,
-              repeat_offender_flag = :repeat_offender_flag, risk_level = :risk_level, compliance_score = :compliance_score";
-    
-    $analytics_id = generateAnalyticsId($conn);
-    $stmt = $conn->prepare($query);
-    return $stmt->execute([
-        'analytics_id' => $analytics_id,
-        'operator_id' => $operator_id,
-        'vehicle_id' => $vehicle_id,
-        'total_violations' => $total_violations,
-        'last_violation_date' => $last_violation_date,
-        'repeat_offender_flag' => $repeat_offender,
-        'risk_level' => $risk_level,
-        'compliance_score' => $compliance_score
-    ]);
-}
-
-function updateComplianceViolationCount($conn, $operator_id, $vehicle_id) {
-    $query = "UPDATE compliance_status SET violation_count = (
-                SELECT COUNT(*) FROM violation_history 
-                WHERE operator_id = :operator_id AND vehicle_id = :vehicle_id
-              ) WHERE operator_id = :operator_id AND vehicle_id = :vehicle_id";
-    $stmt = $conn->prepare($query);
-    return $stmt->execute(['operator_id' => $operator_id, 'vehicle_id' => $vehicle_id]);
-}
-
-function generateViolationId($conn) {
-    $year = date('Y');
-    $query = "SELECT COUNT(*) + 1 as next_id FROM violation_history WHERE violation_id LIKE 'VIO-{$year}-%'";
+    $query = "SELECT COUNT(*) + 1 as next_id FROM lto_vehicle_registration WHERE lto_registration_id LIKE 'LTO-{$year}-%'";
     $stmt = $conn->prepare($query);
     $stmt->execute();
     $next_id = str_pad($stmt->fetch(PDO::FETCH_ASSOC)['next_id'], 4, '0', STR_PAD_LEFT);
-    return "VIO-{$year}-{$next_id}";
+    return "LTO-{$year}-{$next_id}";
 }
 
-function generateAnalyticsId($conn) {
-    $year = date('Y');
-    $query = "SELECT COUNT(*) + 1 as next_id FROM violation_analytics WHERE analytics_id LIKE 'VA-{$year}-%'";
+// Franchise Application Functions
+function getFranchiseApplications($conn) {
+    $query = "SELECT fa.*, o.first_name, o.last_name, v.plate_number, v.vehicle_type
+              FROM franchise_applications fa
+              LEFT JOIN operators o ON fa.operator_id = o.operator_id
+              LEFT JOIN vehicles v ON fa.vehicle_id = v.vehicle_id
+              ORDER BY fa.application_date DESC";
     $stmt = $conn->prepare($query);
     $stmt->execute();
-    $next_id = str_pad($stmt->fetch(PDO::FETCH_ASSOC)['next_id'], 3, '0', STR_PAD_LEFT);
-    return "VA-{$year}-{$next_id}";
-}
-
-function generateViolationReport($conn, $filters = []) {
-    $query = "SELECT vh.*, o.first_name, o.last_name, v.plate_number, v.vehicle_type,
-              va.risk_level, va.repeat_offender_flag
-              FROM violation_history vh
-              JOIN operators o ON vh.operator_id = o.operator_id
-              JOIN vehicles v ON vh.vehicle_id = v.vehicle_id
-              LEFT JOIN violation_analytics va ON vh.operator_id = va.operator_id AND vh.vehicle_id = va.vehicle_id
-              WHERE 1=1";
-    
-    $params = [];
-    
-    if (!empty($filters['date_from'])) {
-        $query .= " AND vh.violation_date >= :date_from";
-        $params['date_from'] = $filters['date_from'];
-    }
-    
-    if (!empty($filters['date_to'])) {
-        $query .= " AND vh.violation_date <= :date_to";
-        $params['date_to'] = $filters['date_to'];
-    }
-    
-    if (!empty($filters['settlement_status'])) {
-        $query .= " AND vh.settlement_status = :settlement_status";
-        $params['settlement_status'] = $filters['settlement_status'];
-    }
-    
-    if (!empty($filters['violation_type'])) {
-        $query .= " AND vh.violation_type = :violation_type";
-        $params['violation_type'] = $filters['violation_type'];
-    }
-    
-    $query .= " ORDER BY vh.violation_date DESC";
-    
-    $stmt = $conn->prepare($query);
-    $stmt->execute($params);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-function linkDigitizedTicket($conn, $digitized_id, $operator_id, $vehicle_id) {
-    try {
-        $conn->beginTransaction();
-        
-        // Get digitized ticket data
-        $query = "SELECT * FROM digitized_tickets WHERE digitized_id = :digitized_id";
-        $stmt = $conn->prepare($query);
-        $stmt->execute(['digitized_id' => $digitized_id]);
-        $ticket = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$ticket) {
-            throw new Exception('Digitized ticket not found');
-        }
-        
-        // Create violation record from digitized ticket
-        $violation_id = generateViolationId($conn);
-        $violation_data = [
-            'violation_id' => $violation_id,
-            'operator_id' => $operator_id,
-            'vehicle_id' => $vehicle_id,
-            'violation_type' => $ticket['violation_type'],
-            'violation_date' => $ticket['violation_date'],
-            'fine_amount' => $ticket['fine_amount'],
-            'settlement_status' => 'unpaid',
-            'location' => $ticket['location'],
-            'ticket_number' => $ticket['ticket_number']
-        ];
-        
-        addViolationRecord($conn, $violation_data);
-        
-        // Update digitized ticket linking status
-        $query = "UPDATE digitized_tickets SET operator_id = :operator_id, vehicle_id = :vehicle_id, 
-                  linking_status = 'linked', linking_confidence = 100.00, status = 'processed' 
-                  WHERE digitized_id = :digitized_id";
-        $stmt = $conn->prepare($query);
-        $stmt->execute([
-            'operator_id' => $operator_id,
-            'vehicle_id' => $vehicle_id,
-            'digitized_id' => $digitized_id
-        ]);
-        
-        $conn->commit();
-        return true;
-    } catch (Exception $e) {
-        $conn->rollback();
-        return false;
-    }
-}
-
 function getFilteredApplications($conn, $status = '', $type = '', $stage = '', $date = '') {
-    $query = "SELECT fa.*, o.first_name, o.last_name, v.plate_number, v.vehicle_type, v.make, v.model
+    $query = "SELECT fa.*, o.first_name, o.last_name, v.plate_number, v.vehicle_type
               FROM franchise_applications fa
-              JOIN operators o ON fa.operator_id = o.operator_id
-              JOIN vehicles v ON fa.vehicle_id = v.vehicle_id
+              LEFT JOIN operators o ON fa.operator_id = o.operator_id
+              LEFT JOIN vehicles v ON fa.vehicle_id = v.vehicle_id
               WHERE 1=1";
     
     $params = [];
@@ -841,255 +377,174 @@ function getFilteredApplications($conn, $status = '', $type = '', $stage = '', $
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-// Violation Statistics Function for Analytics
-function getViolationStatistics($conn) {
-    $stats = [];
-    
-    // Total violations
-    $query = "SELECT COUNT(*) as total FROM violation_history";
+// Document Repository Functions
+function getDocuments($conn) {
+    $query = "SELECT dr.*, o.first_name, o.last_name, v.plate_number, v.vehicle_type
+              FROM document_repository dr
+              LEFT JOIN operators o ON dr.operator_id = o.operator_id
+              LEFT JOIN vehicles v ON dr.vehicle_id = v.vehicle_id
+              ORDER BY dr.upload_date DESC";
     $stmt = $conn->prepare($query);
-    $stmt->execute();
-    $stats['total_violations'] = $stmt->fetchColumn();
-    
-    // Settlement breakdown
-    $query = "SELECT settlement_status, COUNT(*) as count, SUM(fine_amount) as amount 
-              FROM violation_history GROUP BY settlement_status";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    $stats['settlement_breakdown'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // Top violation types
-    $query = "SELECT violation_type, COUNT(*) as count 
-              FROM violation_history 
-              GROUP BY violation_type 
-              ORDER BY count DESC LIMIT 5";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    $stats['top_violations'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // Monthly trends
-    $query = "SELECT DATE_FORMAT(violation_date, '%Y-%m') as month, 
-                     COUNT(*) as violations,
-                     SUM(fine_amount) as fines
-              FROM violation_history 
-              WHERE violation_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
-              GROUP BY month 
-              ORDER BY month";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    $stats['monthly_trends'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    return $stats;
-}
-
-// User Management Functions
-function getUsers($conn, $limit = 50, $offset = 0) {
-    $query = "SELECT u.*, ud.profile_picture, ud.address, ud.phone_number,
-              COUNT(al.log_id) as activity_count
-              FROM users u
-              LEFT JOIN user_documents ud ON u.user_id = ud.user_id
-              LEFT JOIN audit_logs al ON u.user_id = al.user_id
-              GROUP BY u.user_id
-              ORDER BY u.created_at DESC
-              LIMIT :limit OFFSET :offset";
-    $stmt = $conn->prepare($query);
-    $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
-    $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-function searchUsers($conn, $search = '', $role = '', $status = '', $verification_status = '') {
-    $query = "SELECT u.*, ud.profile_picture, ud.address, ud.phone_number
-              FROM users u
-              LEFT JOIN user_documents ud ON u.user_id = ud.user_id
-              WHERE 1=1";
-    
-    $params = [];
-    
-    if ($search) {
-        $query .= " AND (u.first_name LIKE :search OR u.last_name LIKE :search OR u.email LIKE :search OR u.username LIKE :search)";
-        $params['search'] = '%' . $search . '%';
-    }
-    
-    if ($role) {
-        $query .= " AND u.role = :role";
-        $params['role'] = $role;
-    }
-    
-    if ($status) {
-        $query .= " AND u.status = :status";
-        $params['status'] = $status;
-    }
-    
-    if ($verification_status) {
-        $query .= " AND u.verification_status = :verification_status";
-        $params['verification_status'] = $verification_status;
-    }
-    
-    $query .= " ORDER BY u.created_at DESC";
-    
-    $stmt = $conn->prepare($query);
-    $stmt->execute($params);
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
-function getUserById($conn, $user_id) {
-    $query = "SELECT u.*, ud.profile_picture, ud.address, ud.phone_number, ud.id_document_path, ud.verification_documents
-              FROM users u
-              LEFT JOIN user_documents ud ON u.user_id = ud.user_id
-              WHERE u.user_id = :user_id";
-    $stmt = $conn->prepare($query);
-    $stmt->bindParam(':user_id', $user_id);
-    $stmt->execute();
-    return $stmt->fetch(PDO::FETCH_ASSOC);
-}
-
-function getUserStatistics($conn) {
+// Franchise Lifecycle Functions
+function getLifecycleStatistics($conn) {
     $stats = [];
     
-    // Total users
-    $query = "SELECT COUNT(*) as total FROM users";
+    $query = "SELECT COUNT(*) as active_franchises FROM franchise_lifecycle WHERE lifecycle_stage = 'active'";
     $stmt = $conn->prepare($query);
     $stmt->execute();
-    $stats['total_users'] = $stmt->fetchColumn();
+    $stats['active_franchises'] = $stmt->fetchColumn();
     
-    // Active users
-    $query = "SELECT COUNT(*) as total FROM users WHERE status = 'active'";
+    $query = "SELECT COUNT(*) as due_for_renewal FROM franchise_lifecycle WHERE action_required = 'renewal'";
     $stmt = $conn->prepare($query);
     $stmt->execute();
-    $stats['active_users'] = $stmt->fetchColumn();
+    $stats['due_for_renewal'] = $stmt->fetchColumn();
     
-    // Pending verification
-    $query = "SELECT COUNT(*) as total FROM users WHERE verification_status = 'pending'";
+    $query = "SELECT COUNT(*) as expired FROM franchise_lifecycle WHERE lifecycle_stage = 'expired'";
     $stmt = $conn->prepare($query);
     $stmt->execute();
-    $stats['pending_verification'] = $stmt->fetchColumn();
+    $stats['expired'] = $stmt->fetchColumn();
     
-    // Role breakdown
-    $query = "SELECT role, COUNT(*) as count FROM users GROUP BY role";
+    $query = "SELECT COUNT(*) as revoked FROM franchise_lifecycle WHERE lifecycle_stage = 'revocation'";
     $stmt = $conn->prepare($query);
     $stmt->execute();
-    $stats['role_breakdown'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $stats['revoked'] = $stmt->fetchColumn();
     
     return $stats;
 }
 
-function updateUserStatus($conn, $user_id, $status, $updated_by) {
+function getFranchiseLifecycle($conn) {
+    $query = "SELECT fl.*, 
+                     COALESCE(fr.franchise_number, 'N/A') as franchise_number,
+                     COALESCE(fr.route_assigned, 'N/A') as route_assigned,
+                     o.first_name, o.last_name, v.plate_number, v.vehicle_type
+              FROM franchise_lifecycle fl
+              LEFT JOIN operators o ON fl.operator_id = o.operator_id
+              LEFT JOIN vehicles v ON fl.vehicle_id = v.vehicle_id
+              LEFT JOIN franchise_records fr ON fl.franchise_id = fr.franchise_id
+              ORDER BY fl.stage_date DESC";
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Route and Schedule Functions
+function getRoutes($conn) {
+    $query = "SELECT r.*, 
+              (SELECT COUNT(*) FROM route_schedules rs WHERE rs.route_id = r.route_id) as schedule_count,
+              (SELECT COUNT(*) FROM route_schedules rs WHERE rs.route_id = r.route_id AND rs.published_to_citizen = 1) as published_schedules
+              FROM official_routes r
+              ORDER BY r.route_name";
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function getRouteSchedules($conn) {
+    $query = "SELECT rs.*, r.route_name, r.route_code, o.first_name, o.last_name, v.plate_number, v.vehicle_type
+              FROM route_schedules rs
+              LEFT JOIN official_routes r ON rs.route_id = r.route_id
+              LEFT JOIN operators o ON rs.operator_id = o.operator_id
+              LEFT JOIN vehicles v ON rs.vehicle_id = v.vehicle_id
+              ORDER BY rs.departure_time";
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Traffic Violation Functions
+function getViolationRecords($conn) {
+    $query = "SELECT vh.*, o.first_name, o.last_name, v.plate_number, v.vehicle_type
+              FROM violation_history vh
+              LEFT JOIN operators o ON vh.operator_id = o.operator_id
+              LEFT JOIN vehicles v ON vh.vehicle_id = v.vehicle_id
+              ORDER BY vh.violation_date DESC
+              LIMIT 50";
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function createRevenueIntegrationTable($conn) {
     try {
-        $conn->beginTransaction();
-        
-        $query = "UPDATE users SET status = :status, updated_at = NOW() WHERE user_id = :user_id";
+        $query = "CREATE TABLE IF NOT EXISTS revenue_integration (
+                    revenue_id VARCHAR(20) PRIMARY KEY,
+                    violation_id VARCHAR(20),
+                    operator_id VARCHAR(20),
+                    collection_amount DECIMAL(10,2),
+                    collection_date DATETIME,
+                    collection_status ENUM('pending', 'completed', 'cancelled') DEFAULT 'completed',
+                    payment_method VARCHAR(50),
+                    collected_by VARCHAR(100),
+                    remarks TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                  )";
         $stmt = $conn->prepare($query);
-        $stmt->execute(['status' => $status, 'user_id' => $user_id]);
-        
-        // Log the action
-        logUserAction($conn, $user_id, 'status_update', "Status changed to {$status}", $updated_by);
-        
-        $conn->commit();
-        return true;
+        $stmt->execute();
     } catch (Exception $e) {
-        $conn->rollback();
-        return false;
+        // Table might already exist, continue
     }
 }
 
-function updateUserVerification($conn, $user_id, $verification_status, $verified_by, $remarks = null) {
-    try {
-        $conn->beginTransaction();
-        
-        $query = "UPDATE users SET verification_status = :verification_status, verified_by = :verified_by, verified_at = NOW() WHERE user_id = :user_id";
-        $stmt = $conn->prepare($query);
-        $stmt->execute([
-            'verification_status' => $verification_status,
-            'verified_by' => $verified_by,
-            'user_id' => $user_id
-        ]);
-        
-        // Log the action
-        $action_details = "Verification status changed to {$verification_status}";
-        if ($remarks) {
-            $action_details .= ". Remarks: {$remarks}";
-        }
-        logUserAction($conn, $user_id, 'verification_update', $action_details, $verified_by);
-        
-        $conn->commit();
-        return true;
-    } catch (Exception $e) {
-        $conn->rollback();
-        return false;
-    }
-}
-
-function logUserAction($conn, $user_id, $action_type, $action_details, $performed_by) {
-    $log_id = generateLogId($conn);
-    $query = "INSERT INTO audit_logs (log_id, user_id, action_type, action_details, performed_by, timestamp) 
-              VALUES (:log_id, :user_id, :action_type, :action_details, :performed_by, NOW())";
-    $stmt = $conn->prepare($query);
-    return $stmt->execute([
-        'log_id' => $log_id,
-        'user_id' => $user_id,
-        'action_type' => $action_type,
-        'action_details' => $action_details,
-        'performed_by' => $performed_by
-    ]);
-}
-
-function generateLogId($conn) {
+function generateInspectionId($conn) {
     $year = date('Y');
-    $query = "SELECT COUNT(*) + 1 as next_id FROM audit_logs WHERE log_id LIKE 'LOG-{$year}-%'";
+    $query = "SELECT COUNT(*) + 1 as next_id FROM inspection_records WHERE inspection_id LIKE 'INS-{$year}-%'";
     $stmt = $conn->prepare($query);
     $stmt->execute();
-    $next_id = str_pad($stmt->fetch(PDO::FETCH_ASSOC)['next_id'], 4, '0', STR_PAD_LEFT);
-    return "LOG-{$year}-{$next_id}";
+    $next_id = str_pad($stmt->fetch(PDO::FETCH_ASSOC)['next_id'], 3, '0', STR_PAD_LEFT);
+    return "INS-{$year}-{$next_id}";
 }
 
-function generateUserId($conn) {
-    $year = date('Y');
-    $query = "SELECT COUNT(*) + 1 as next_id FROM users WHERE user_id LIKE 'USR-{$year}-%'";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    $next_id = str_pad($stmt->fetch(PDO::FETCH_ASSOC)['next_id'], 4, '0', STR_PAD_LEFT);
-    return "USR-{$year}-{$next_id}";
-}
-
-// Announcement Functions
-function getAnnouncements($conn, $limit = null) {
+function getScheduledInspectionsFromDB($conn) {
     try {
-        $query = "SELECT * FROM announcements ORDER BY created_at DESC";
-        if ($limit) {
-            $query .= " LIMIT :limit";
-        }
-        
+        $query = "SELECT ir.*, 
+                         COALESCE(o.first_name, 'Unknown') as first_name, 
+                         COALESCE(o.last_name, 'Operator') as last_name, 
+                         COALESCE(v.plate_number, ir.vehicle_id) as plate_number, 
+                         COALESCE(v.vehicle_type, 'Unknown') as vehicle_type, 
+                         COALESCE(v.make, '') as make, 
+                         COALESCE(v.model, '') as model
+                  FROM inspection_records ir
+                  LEFT JOIN vehicles v ON ir.vehicle_id = v.vehicle_id
+                  LEFT JOIN operators o ON v.operator_id = o.operator_id
+                  WHERE ir.result = 'scheduled'
+                  ORDER BY ir.inspection_date ASC";
         $stmt = $conn->prepare($query);
-        if ($limit) {
-            $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
-        }
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) {
-        error_log("Error getting announcements: " . $e->getMessage());
         return [];
     }
 }
 
-function getPublishedAnnouncements($conn, $target_audience = 'all') {
+function getTodaysDueInspections($conn) {
     try {
-        $query = "SELECT * FROM announcements 
-                 WHERE status = 'published' 
-                 AND (target_audience = :audience OR target_audience = 'all')
-                 AND (publish_date IS NULL OR publish_date <= NOW())
-                 AND (expiry_date IS NULL OR expiry_date > NOW())
-                 ORDER BY priority DESC, created_at DESC";
-        
+        $query = "SELECT ir.*, 
+                         COALESCE(o.first_name, 'Unknown') as first_name, 
+                         COALESCE(o.last_name, 'Operator') as last_name, 
+                         COALESCE(v.plate_number, ir.vehicle_id) as plate_number, 
+                         COALESCE(v.vehicle_type, 'Unknown') as vehicle_type, 
+                         COALESCE(v.make, '') as make, 
+                         COALESCE(v.model, '') as model
+                  FROM inspection_records ir
+                  LEFT JOIN vehicles v ON ir.vehicle_id = v.vehicle_id
+                  LEFT JOIN operators o ON v.operator_id = o.operator_id
+                  WHERE ir.result = 'scheduled' AND DATE(ir.inspection_date) = CURDATE()
+                  ORDER BY ir.inspection_date ASC";
         $stmt = $conn->prepare($query);
-        $stmt->bindParam(':audience', $target_audience);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) {
-        error_log("Error getting published announcements: " . $e->getMessage());
         return [];
     }
 }
+
+
+
+
 
 ?>
