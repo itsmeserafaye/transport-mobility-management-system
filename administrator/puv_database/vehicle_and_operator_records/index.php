@@ -284,14 +284,10 @@ $total_pages = ceil($total_operators / $limit);
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-bold text-slate-900 dark:text-white">Vehicle & Operator Records</h2>
                     <div class="flex space-x-3">
-                        <button onclick="openAddModal()" class="px-4 py-2 text-white rounded-lg flex items-center space-x-2 transition-colors" style="background-color: #4CAF50;" onmouseover="this.style.backgroundColor='#45A049'" onmouseout="this.style.backgroundColor='#4CAF50'">
-                            <i data-lucide="plus" class="w-4 h-4"></i>
-                            <span>Add Operator</span>
-                        </button>
-                        <button onclick="openAddVehicleModal()" class="px-4 py-2 bg-blue-500 text-white rounded-lg flex items-center space-x-2 hover:bg-blue-600 transition-colors">
-                            <i data-lucide="car" class="w-4 h-4"></i>
-                            <span>Add Vehicle</span>
-                        </button>
+                        <div class="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg flex items-center space-x-2">
+                            <i data-lucide="info" class="w-4 h-4"></i>
+                            <span class="text-sm">Records created from franchise applications</span>
+                        </div>
 
                         <div class="relative">
                             <button onclick="toggleExportMenu()" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 flex items-center space-x-2">
@@ -436,9 +432,7 @@ $total_pages = ceil($total_operators / $limit);
                                             <button onclick="openEditModal('<?php echo $operator['operator_id']; ?>')" class="p-1 text-orange-600 hover:bg-orange-100 rounded" title="Edit">
                                                 <i data-lucide="edit" class="w-4 h-4"></i>
                                             </button>
-                                            <button onclick="deleteOperator('<?php echo $operator['operator_id']; ?>')" class="p-1 text-red-600 hover:bg-red-100 rounded" title="Delete">
-                                                <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                            </button>
+
                                         </div>
                                     </td>
                                 </tr>
@@ -519,7 +513,10 @@ $total_pages = ceil($total_operators / $limit);
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">License Number</label>
-                            <input type="text" name="license_number" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                            <input type="text" name="license_number" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" 
+                                   pattern="^(?:[A-Z]\d{2}-\d{2}-\d{6}|\d{1,2}-\d{9})$" 
+                                   title="Old format: D12-34-567890 or New format: N-123456789 / 02-123456789">
+                            <p class="text-xs text-gray-500 mt-1">Old format: D12-34-567890 | New format: N-123456789 or 02-123456789</p>
                         </div>
                     </div>
                     <div class="mt-4">
@@ -534,28 +531,39 @@ $total_pages = ceil($total_operators / $limit);
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Plate Number</label>
-                            <input type="text" name="plate_number" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                            <input type="text" name="plate_number" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" 
+                                   pattern="^[A-Z]{3}\s?\d{3,4}$" 
+                                   title="Format: ABC 1234 (new) or ABC 123 (old)"
+                                   oninput="formatPlateNumber(this)">
+                            <p class="text-xs text-gray-500 mt-1">Format: ABC 1234 (new) or ABC 123 (old)</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Vehicle Type</label>
-                            <select name="vehicle_type" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                            <select name="vehicle_type" id="vehicleType" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" onchange="updateMakeOptions()">
                                 <option value="">Select Type</option>
                                 <option value="jeepney">Jeepney</option>
                                 <option value="bus">Bus</option>
                                 <option value="tricycle">Tricycle</option>
                                 <option value="taxi">Taxi</option>
                                 <option value="van">Van</option>
+                                <option value="other">Other</option>
                             </select>
                         </div>
                     </div>
                     <div class="grid grid-cols-3 gap-4 mt-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Make</label>
-                            <input type="text" name="make" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                            <select name="make" id="makeSelect" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" onchange="updateModelOptions()">
+                                <option value="">Select Vehicle Type First</option>
+                            </select>
+                            <input type="text" name="make_other" id="makeOther" placeholder="Enter make" class="mt-2 block w-full border border-gray-300 rounded-md px-3 py-2 hidden">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Model</label>
-                            <input type="text" name="model" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                            <select name="model" id="modelSelect" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                                <option value="">Select Make First</option>
+                            </select>
+                            <input type="text" name="model_other" id="modelOther" placeholder="Enter model" class="mt-2 block w-full border border-gray-300 rounded-md px-3 py-2 hidden">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Year</label>
@@ -565,16 +573,30 @@ $total_pages = ceil($total_operators / $limit);
                     <div class="grid grid-cols-2 gap-4 mt-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Engine Number</label>
-                            <input type="text" name="engine_number" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                            <input type="text" name="engine_number" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" 
+                                   pattern="^[A-Z0-9-]{5,20}$" 
+                                   title="Alphanumeric with dashes, 5-20 characters (e.g., 1NZ1234567, 4D56U12345)"
+                                   oninput="validateEngineNumber(this)">
+                            <p class="text-xs text-gray-500 mt-1">Format: Alphanumeric with dashes, 5-20 characters</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Chassis Number</label>
-                            <input type="text" name="chassis_number" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                            <input type="text" name="chassis_number" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" 
+                                   pattern="^[A-HJ-NPR-Z0-9]{17}$" 
+                                   title="17-character VIN format (e.g., JTDBR32E720123456)"
+                                   oninput="validateChassisNumber(this)">
+                            <p class="text-xs text-gray-500 mt-1">Format: 17-character VIN (e.g., JTDBR32E720123456)</p>
                         </div>
                     </div>
-                    <div class="mt-4">
-                        <label class="block text-sm font-medium text-gray-700">Seating Capacity</label>
-                        <input type="number" name="seating_capacity" min="1" max="100" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                    <div class="grid grid-cols-2 gap-4 mt-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Color</label>
+                            <input type="text" name="color" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" placeholder="e.g., White, Blue, Red">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Seating Capacity</label>
+                            <input type="number" name="seating_capacity" min="1" max="100" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                        </div>
                     </div>
                 </div>
 
@@ -640,17 +662,22 @@ $total_pages = ceil($total_operators / $limit);
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Plate Number</label>
-                        <input type="text" name="plate_number" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                        <input type="text" name="plate_number" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" 
+                               pattern="^[A-Z]{3}\s?\d{3,4}$" 
+                               title="Format: ABC 1234 (new) or ABC 123 (old)"
+                               oninput="formatPlateNumber(this)">
+                        <p class="text-xs text-gray-500 mt-1">Format: ABC 1234 (new) or ABC 123 (old)</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Vehicle Type</label>
-                        <select name="vehicle_type" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                        <select name="vehicle_type" id="vehicleTypeVehicle" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" onchange="updateMakeOptionsVehicle()">
                             <option value="">Select Type</option>
                             <option value="jeepney">Jeepney</option>
                             <option value="bus">Bus</option>
                             <option value="tricycle">Tricycle</option>
                             <option value="taxi">Taxi</option>
                             <option value="van">Van</option>
+                            <option value="other">Other</option>
                         </select>
                     </div>
                 </div>
@@ -658,11 +685,17 @@ $total_pages = ceil($total_operators / $limit);
                 <div class="grid grid-cols-3 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Make</label>
-                        <input type="text" name="make" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                        <select name="make" id="makeSelectVehicle" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" onchange="updateModelOptionsVehicle()">
+                            <option value="">Select Vehicle Type First</option>
+                        </select>
+                        <input type="text" name="make_other" id="makeOtherVehicle" placeholder="Enter make" class="mt-2 block w-full border border-gray-300 rounded-md px-3 py-2 hidden">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Model</label>
-                        <input type="text" name="model" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                        <select name="model" id="modelSelectVehicle" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                            <option value="">Select Make First</option>
+                        </select>
+                        <input type="text" name="model_other" id="modelOtherVehicle" placeholder="Enter model" class="mt-2 block w-full border border-gray-300 rounded-md px-3 py-2 hidden">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Year</label>
@@ -673,17 +706,31 @@ $total_pages = ceil($total_operators / $limit);
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Engine Number</label>
-                        <input type="text" name="engine_number" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                        <input type="text" name="engine_number" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" 
+                               pattern="^[A-Z0-9-]{5,20}$" 
+                               title="Alphanumeric with dashes, 5-20 characters (e.g., 1NZ1234567, 4D56U12345)"
+                               oninput="validateEngineNumber(this)">
+                        <p class="text-xs text-gray-500 mt-1">Format: Alphanumeric with dashes, 5-20 characters</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Chassis Number</label>
-                        <input type="text" name="chassis_number" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                        <input type="text" name="chassis_number" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" 
+                               pattern="^[A-HJ-NPR-Z0-9]{17}$" 
+                               title="17-character VIN format (e.g., JTDBR32E720123456)"
+                               oninput="validateChassisNumber(this)">
+                        <p class="text-xs text-gray-500 mt-1">Format: 17-character VIN (e.g., JTDBR32E720123456)</p>
                     </div>
                 </div>
                 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Seating Capacity</label>
-                    <input type="number" name="seating_capacity" min="1" max="100" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Color</label>
+                        <input type="text" name="color" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2" placeholder="e.g., White, Blue, Red">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Seating Capacity</label>
+                        <input type="number" name="seating_capacity" min="1" max="100" required class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                    </div>
                 </div>
 
                 <div class="flex justify-end space-x-3">
@@ -839,9 +886,255 @@ $total_pages = ceil($total_operators / $limit);
             document.getElementById(modalId).classList.add('hidden');
         }
 
+        // License number validation function
+        function validateLicenseNumber(licenseNumber) {
+            const pattern = /^(?:[A-Z]\d{2}-\d{2}-\d{6}|\d{1,2}-\d{9})$/;
+            return pattern.test(licenseNumber);
+        }
+
+        // Plate number validation and formatting
+        function validatePlateNumber(plateNumber) {
+            const pattern = /^[A-Z]{3}\s?\d{3,4}$/;
+            return pattern.test(plateNumber);
+        }
+
+        function formatPlateNumber(input) {
+            let value = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            
+            if (value.length > 3) {
+                value = value.substring(0, 3) + ' ' + value.substring(3, 7);
+            }
+            
+            input.value = value;
+            
+            // Show inline validation
+            const isValid = validatePlateNumber(value);
+            input.style.borderColor = isValid ? '#10b981' : '#ef4444';
+        }
+
+        // Engine number validation
+        function validateEngineNumberFormat(engineNumber) {
+            const pattern = /^[A-Z0-9-]{5,20}$/;
+            return pattern.test(engineNumber);
+        }
+
+        function validateEngineNumber(input) {
+            let value = input.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+            input.value = value;
+            
+            const isValid = validateEngineNumberFormat(value);
+            input.style.borderColor = isValid ? '#10b981' : '#ef4444';
+        }
+
+        // Chassis number validation
+        function validateChassisNumberFormat(chassisNumber) {
+            const pattern = /^[A-HJ-NPR-Z0-9]{17}$/;
+            return pattern.test(chassisNumber);
+        }
+
+        function validateChassisNumber(input) {
+            let value = input.value.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g, '');
+            input.value = value;
+            
+            const isValid = validateChassisNumberFormat(value);
+            input.style.borderColor = isValid ? '#10b981' : '#ef4444';
+        }
+
+        // Vehicle data
+        const vehicleData = {
+            jeepney: {
+                'Isuzu': ['Elf', 'Forward', 'NHR', 'NPR'],
+                'Mitsubishi': ['Fuso', 'Canter', 'L300'],
+                'Toyota': ['Coaster', 'Hiace', 'Dyna'],
+                'Hyundai': ['County', 'Mighty'],
+                'Other': []
+            },
+            bus: {
+                'Isuzu': ['Giga', 'Forward', 'Elf'],
+                'Mitsubishi': ['Rosa', 'Fuso'],
+                'Toyota': ['Coaster', 'Hiace Commuter'],
+                'Hyundai': ['County', 'Universe'],
+                'Daewoo': ['BH090', 'BH115'],
+                'Other': []
+            },
+            tricycle: {
+                'Honda': ['TMX 155', 'XRM 125', 'Wave 125'],
+                'Yamaha': ['Mio', 'Vega Force'],
+                'Suzuki': ['Smash', 'Raider'],
+                'Kawasaki': ['Rouser', 'Fury'],
+                'Other': []
+            },
+            taxi: {
+                'Toyota': ['Vios', 'Innova', 'Avanza'],
+                'Nissan': ['Almera', 'Sentra', 'Urvan'],
+                'Mitsubishi': ['Mirage', 'Adventure'],
+                'Hyundai': ['Accent', 'Eon'],
+                'Other': []
+            },
+            van: {
+                'Toyota': ['Hiace', 'Grandia', 'Commuter'],
+                'Nissan': ['Urvan', 'NV350'],
+                'Mitsubishi': ['L300', 'Delica'],
+                'Isuzu': ['Crosswind'],
+                'Other': []
+            }
+        };
+
+        function updateMakeOptions() {
+            const vehicleType = document.getElementById('vehicleType').value;
+            const makeSelect = document.getElementById('makeSelect');
+            const makeOther = document.getElementById('makeOther');
+            const modelSelect = document.getElementById('modelSelect');
+            
+            makeSelect.innerHTML = '<option value="">Select Make</option>';
+            modelSelect.innerHTML = '<option value="">Select Make First</option>';
+            
+            if (vehicleType && vehicleData[vehicleType]) {
+                Object.keys(vehicleData[vehicleType]).forEach(make => {
+                    const option = document.createElement('option');
+                    option.value = make;
+                    option.textContent = make;
+                    makeSelect.appendChild(option);
+                });
+            }
+            
+            makeOther.classList.add('hidden');
+        }
+
+        function updateModelOptions() {
+            const vehicleType = document.getElementById('vehicleType').value;
+            const make = document.getElementById('makeSelect').value;
+            const makeOther = document.getElementById('makeOther');
+            const modelSelect = document.getElementById('modelSelect');
+            const modelOther = document.getElementById('modelOther');
+            
+            modelSelect.innerHTML = '<option value="">Select Model</option>';
+            
+            if (make === 'Other') {
+                makeOther.classList.remove('hidden');
+                makeOther.required = true;
+                modelOther.classList.remove('hidden');
+                modelOther.required = true;
+                modelSelect.classList.add('hidden');
+                modelSelect.required = false;
+            } else {
+                makeOther.classList.add('hidden');
+                makeOther.required = false;
+                modelOther.classList.add('hidden');
+                modelOther.required = false;
+                modelSelect.classList.remove('hidden');
+                modelSelect.required = true;
+                
+                if (vehicleType && make && vehicleData[vehicleType][make]) {
+                    vehicleData[vehicleType][make].forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model;
+                        option.textContent = model;
+                        modelSelect.appendChild(option);
+                    });
+                    
+                    const otherOption = document.createElement('option');
+                    otherOption.value = 'Other';
+                    otherOption.textContent = 'Other';
+                    modelSelect.appendChild(otherOption);
+                }
+            }
+        }
+
+        // Vehicle form functions
+        function updateMakeOptionsVehicle() {
+            const vehicleType = document.getElementById('vehicleTypeVehicle').value;
+            const makeSelect = document.getElementById('makeSelectVehicle');
+            const makeOther = document.getElementById('makeOtherVehicle');
+            const modelSelect = document.getElementById('modelSelectVehicle');
+            
+            makeSelect.innerHTML = '<option value="">Select Make</option>';
+            modelSelect.innerHTML = '<option value="">Select Make First</option>';
+            
+            if (vehicleType && vehicleData[vehicleType]) {
+                Object.keys(vehicleData[vehicleType]).forEach(make => {
+                    const option = document.createElement('option');
+                    option.value = make;
+                    option.textContent = make;
+                    makeSelect.appendChild(option);
+                });
+            }
+            
+            makeOther.classList.add('hidden');
+        }
+
+        function updateModelOptionsVehicle() {
+            const vehicleType = document.getElementById('vehicleTypeVehicle').value;
+            const make = document.getElementById('makeSelectVehicle').value;
+            const makeOther = document.getElementById('makeOtherVehicle');
+            const modelSelect = document.getElementById('modelSelectVehicle');
+            const modelOther = document.getElementById('modelOtherVehicle');
+            
+            modelSelect.innerHTML = '<option value="">Select Model</option>';
+            
+            if (make === 'Other') {
+                makeOther.classList.remove('hidden');
+                makeOther.required = true;
+                modelOther.classList.remove('hidden');
+                modelOther.required = true;
+                modelSelect.classList.add('hidden');
+                modelSelect.required = false;
+            } else {
+                makeOther.classList.add('hidden');
+                makeOther.required = false;
+                modelOther.classList.add('hidden');
+                modelOther.required = false;
+                modelSelect.classList.remove('hidden');
+                modelSelect.required = true;
+                
+                if (vehicleType && make && vehicleData[vehicleType][make]) {
+                    vehicleData[vehicleType][make].forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model;
+                        option.textContent = model;
+                        modelSelect.appendChild(option);
+                    });
+                    
+                    const otherOption = document.createElement('option');
+                    otherOption.value = 'Other';
+                    otherOption.textContent = 'Other';
+                    modelSelect.appendChild(otherOption);
+                }
+            }
+        }
+
         // Handle add operator form submission
         document.getElementById('addOperatorForm').addEventListener('submit', function(e) {
             e.preventDefault();
+            
+            // Validate license number
+            const licenseNumber = this.license_number.value;
+            if (!validateLicenseNumber(licenseNumber)) {
+                alert('Invalid license number format.\n\nAccepted formats:\n• Old: D12-34-567890\n• New: N-123456789 or 02-123456789');
+                return;
+            }
+            
+            // Validate plate number
+            const plateNumber = this.plate_number.value;
+            if (!validatePlateNumber(plateNumber)) {
+                alert('Invalid plate number format.\n\nAccepted formats:\n• New: ABC 1234\n• Old: ABC 123');
+                return;
+            }
+            
+            // Validate engine number
+            const engineNumber = this.engine_number.value;
+            if (!validateEngineNumberFormat(engineNumber)) {
+                alert('Invalid engine number format.\n\nFormat: Alphanumeric with dashes, 5-20 characters\nExamples: 1NZ1234567, 4D56U12345');
+                return;
+            }
+            
+            // Validate chassis number
+            const chassisNumber = this.chassis_number.value;
+            if (!validateChassisNumberFormat(chassisNumber)) {
+                alert('Invalid chassis number format.\n\nFormat: 17-character VIN\nExample: JTDBR32E720123456');
+                return;
+            }
+            
             const formData = new FormData(this);
             
             fetch('add_operator_with_vehicle_ajax.php', {
@@ -866,6 +1159,28 @@ $total_pages = ceil($total_operators / $limit);
         // Handle add vehicle form submission
         document.getElementById('addVehicleForm').addEventListener('submit', function(e) {
             e.preventDefault();
+            
+            // Validate plate number
+            const plateNumber = this.plate_number.value;
+            if (!validatePlateNumber(plateNumber)) {
+                alert('Invalid plate number format.\n\nAccepted formats:\n• New: ABC 1234\n• Old: ABC 123');
+                return;
+            }
+            
+            // Validate engine number
+            const engineNumber = this.engine_number.value;
+            if (!validateEngineNumberFormat(engineNumber)) {
+                alert('Invalid engine number format.\n\nFormat: Alphanumeric with dashes, 5-20 characters\nExamples: 1NZ1234567, 4D56U12345');
+                return;
+            }
+            
+            // Validate chassis number
+            const chassisNumber = this.chassis_number.value;
+            if (!validateChassisNumberFormat(chassisNumber)) {
+                alert('Invalid chassis number format.\n\nFormat: 17-character VIN\nExample: JTDBR32E720123456');
+                return;
+            }
+            
             const formData = new FormData(this);
             
             fetch('add_vehicle_ajax.php', {
@@ -887,11 +1202,7 @@ $total_pages = ceil($total_operators / $limit);
             });
         });
 
-        function deleteOperator(operatorId) {
-            if (confirm('Are you sure you want to delete this operator?')) {
-                window.location.href = `delete.php?id=${operatorId}`;
-            }
-        }
+
 
         function searchVehicles() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();

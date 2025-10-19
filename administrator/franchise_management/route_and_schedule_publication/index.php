@@ -390,7 +390,7 @@ $schedules = getRouteSchedules($conn);
                                         <td class="px-6 py-4">
                                             <div>
                                                 <div class="text-sm font-medium text-slate-900 dark:text-white"><?php echo $schedule['schedule_id']; ?></div>
-                                                <div class="text-sm text-slate-500">Every <?php echo $schedule['frequency_minutes']; ?> mins</div>
+                                                <div class="text-sm text-slate-500"><?php echo ucfirst($schedule['service_type']); ?> Service</div>
                                                 <div class="text-xs text-slate-400"><?php echo ucfirst($schedule['operating_days']); ?></div>
                                             </div>
                                         </td>
@@ -403,8 +403,8 @@ $schedules = getRouteSchedules($conn);
                                             <div class="text-sm text-slate-500"><?php echo $schedule['plate_number']; ?> - <?php echo ucfirst($schedule['vehicle_type']); ?></div>
                                         </td>
                                         <td class="px-6 py-4">
-                                            <div class="text-sm text-slate-900 dark:text-white"><?php echo date('g:i A', strtotime($schedule['departure_time'])); ?></div>
-                                            <div class="text-sm text-slate-500">to <?php echo date('g:i A', strtotime($schedule['arrival_time'])); ?></div>
+                                            <div class="text-sm text-slate-900 dark:text-white"><?php echo date('g:i A', strtotime($schedule['service_start_time'])); ?> - <?php echo date('g:i A', strtotime($schedule['service_end_time'])); ?></div>
+                                            <div class="text-sm text-slate-500">Every <?php echo $schedule['service_frequency_minutes']; ?> min | <?php echo $schedule['trips_per_day']; ?> trips/day</div>
                                         </td>
                                         <td class="px-6 py-4">
                                             <div class="flex flex-col space-y-1">
@@ -760,18 +760,32 @@ $schedules = getRouteSchedules($conn);
                                     <option value="weekends" ${scheduleData?.operating_days === 'weekends' ? 'selected' : ''}>Weekends</option>
                                 </select>
                             </div>
+                            <div class="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Service Start Time</label>
+                                    <input type="time" id="serviceStartTime" value="${scheduleData?.service_start_time || '05:00'}" class="w-full px-3 py-2 border border-gray-300 rounded-lg" ${isView ? 'readonly' : 'required'}>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Service End Time</label>
+                                    <input type="time" id="serviceEndTime" value="${scheduleData?.service_end_time || '22:00'}" class="w-full px-3 py-2 border border-gray-300 rounded-lg" ${isView ? 'readonly' : 'required'}>
+                                </div>
+                            </div>
                             <div class="grid grid-cols-3 gap-4 mb-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Departure Time</label>
-                                    <input type="time" id="departureTime" value="${scheduleData?.departure_time || ''}" class="w-full px-3 py-2 border border-gray-300 rounded-lg" ${isView ? 'readonly' : 'required'}>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Service Frequency (min)</label>
+                                    <input type="number" id="serviceFrequency" value="${scheduleData?.service_frequency_minutes || '30'}" min="10" max="120" class="w-full px-3 py-2 border border-gray-300 rounded-lg" ${isView ? 'readonly' : 'required'}>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Arrival Time</label>
-                                    <input type="time" id="arrivalTime" value="${scheduleData?.arrival_time || ''}" class="w-full px-3 py-2 border border-gray-300 rounded-lg" ${isView ? 'readonly' : 'required'}>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Trips Per Day</label>
+                                    <input type="number" id="tripsPerDay" value="${scheduleData?.trips_per_day || '20'}" min="5" max="50" class="w-full px-3 py-2 border border-gray-300 rounded-lg" ${isView ? 'readonly' : 'required'}>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Frequency (min)</label>
-                                    <input type="number" id="frequency" value="${scheduleData?.frequency_minutes || '30'}" class="w-full px-3 py-2 border border-gray-300 rounded-lg" ${isView ? 'readonly' : 'required'}>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Service Type</label>
+                                    <select id="serviceType" class="w-full px-3 py-2 border border-gray-300 rounded-lg" ${isView ? 'disabled' : 'required'}>
+                                        <option value="regular" ${scheduleData?.service_type === 'regular' ? 'selected' : ''}>Regular</option>
+                                        <option value="express" ${scheduleData?.service_type === 'express' ? 'selected' : ''}>Express</option>
+                                        <option value="limited" ${scheduleData?.service_type === 'limited' ? 'selected' : ''}>Limited</option>
+                                    </select>
                                 </div>
                             </div>
                             ${!isView ? `
@@ -809,9 +823,11 @@ $schedules = getRouteSchedules($conn);
                             route_id: document.getElementById('routeSelect').value,
                             operator_id: document.getElementById('operatorSelect').value,
                             vehicle_id: document.getElementById('vehicleId').value,
-                            departure_time: document.getElementById('departureTime').value,
-                            arrival_time: document.getElementById('arrivalTime').value,
-                            frequency_minutes: document.getElementById('frequency').value,
+                            service_start_time: document.getElementById('serviceStartTime').value,
+                            service_end_time: document.getElementById('serviceEndTime').value,
+                            service_frequency_minutes: document.getElementById('serviceFrequency').value,
+                            trips_per_day: document.getElementById('tripsPerDay').value,
+                            service_type: document.getElementById('serviceType').value,
                             operating_days: document.getElementById('operatingDays').value
                         };
                         

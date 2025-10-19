@@ -145,6 +145,12 @@ function getViolationHistory($conn) {
 }
 
 function addOperator($conn, $data) {
+    // Validate license number format
+    $license_pattern = '/^(?:[A-Z]\d{2}-\d{2}-\d{6}|\d{1,2}-\d{9})$/';
+    if (!preg_match($license_pattern, $data['license_number'])) {
+        throw new Exception('Invalid license number format. Use old format (D12-34-567890) or new format (N-123456789 or 02-123456789)');
+    }
+    
     $query = "INSERT INTO operators (operator_id, first_name, last_name, address, contact_number, license_number, license_expiry) 
               VALUES (:operator_id, :first_name, :last_name, :address, :contact_number, :license_number, :license_expiry)";
     $stmt = $conn->prepare($query);
@@ -153,9 +159,21 @@ function addOperator($conn, $data) {
 
 function updateOperator($conn, $operator_id, $data) {
     try {
-        $query = "UPDATE operators SET first_name = :first_name, last_name = :last_name, 
-                  address = :address, contact_number = :contact_number, license_expiry = :license_expiry 
-                  WHERE operator_id = :operator_id";
+        // Validate license number format if provided
+        if (isset($data['license_number'])) {
+            $license_pattern = '/^(?:[A-Z]\d{2}-\d{2}-\d{6}|\d{1,2}-\d{9})$/';
+            if (!preg_match($license_pattern, $data['license_number'])) {
+                throw new Exception('Invalid license number format. Use old format (D12-34-567890) or new format (N-123456789 or 02-123456789)');
+            }
+            $query = "UPDATE operators SET first_name = :first_name, last_name = :last_name, 
+                      address = :address, contact_number = :contact_number, license_number = :license_number, license_expiry = :license_expiry 
+                      WHERE operator_id = :operator_id";
+        } else {
+            $query = "UPDATE operators SET first_name = :first_name, last_name = :last_name, 
+                      address = :address, contact_number = :contact_number, license_expiry = :license_expiry 
+                      WHERE operator_id = :operator_id";
+        }
+        
         $stmt = $conn->prepare($query);
         $data['operator_id'] = $operator_id;
         $result = $stmt->execute($data);
@@ -177,9 +195,9 @@ function addVehicle($conn, $data) {
         $conn->beginTransaction();
         
         $query = "INSERT INTO vehicles (vehicle_id, operator_id, plate_number, vehicle_type, make, model, 
-                  year_manufactured, engine_number, chassis_number, seating_capacity) 
+                  year_manufactured, engine_number, chassis_number, color, seating_capacity) 
                   VALUES (:vehicle_id, :operator_id, :plate_number, :vehicle_type, :make, :model, 
-                  :year_manufactured, :engine_number, :chassis_number, :seating_capacity)";
+                  :year_manufactured, :engine_number, :chassis_number, :color, :seating_capacity)";
         $stmt = $conn->prepare($query);
         $stmt->execute($data);
         
@@ -242,21 +260,7 @@ function addLTORegistration($conn, $data) {
     }
 }
 
-function getLTORegistrations($conn) {
-    $sql = "SELECT lr.*, v.make, v.model, v.year, v.body_number, CONCAT(o.first_name, ' ', o.last_name) as operator_name 
-            FROM lto_vehicle_registration lr
-            LEFT JOIN vehicles v ON lr.vehicle_id = v.vehicle_id
-            LEFT JOIN operators o ON lr.operator_id = o.operator_id
-            ORDER BY lr.registration_date DESC";
-    
-    try {
-        $stmt = $conn->prepare($sql);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch(PDOException $e) {
-        return [];
-    }
-}
+
 
 function updateLTORegistration($conn, $id, $data) {
     $sql = "UPDATE lto_vehicle_registration SET 
@@ -297,27 +301,116 @@ function deleteLTORegistration($conn, $id) {
 function getLTORegistrationStats($conn) {
     $stats = [];
     
-    $sql = "SELECT COUNT(*) as total FROM lto_vehicle_registration";
+    $sql = "SELECT COUNT(*) as total FROM lto_registrations";
     $stmt = $conn->prepare($sql);
     $stmt->execute();
     $stats['total'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     
-    $sql = "SELECT COUNT(*) as active FROM lto_vehicle_registration WHERE status = 'active'";
+    $sql = "SELECT COUNT(*) as active FROM lto_registrations WHERE status = 'active'";
     $stmt = $conn->prepare($sql);
     $stmt->execute();
     $stats['active'] = $stmt->fetch(PDO::FETCH_ASSOC)['active'];
     
-    $sql = "SELECT COUNT(*) as expired FROM lto_vehicle_registration WHERE status = 'expired' OR expiry_date < CURDATE()";
+    $sql = "SELECT COUNT(*) as pending FROM lto_registrations WHERE status = 'pending'";
+    $stmt = $conn->prepare($sql);
+    $stmt->execute();
+    $stats['pending'] = $stmt->fetch(PDO::FETCH_ASSOC)['pending'];
+    
+    $sql = "SELECT COUNT(*) as expired FROM lto_registrations WHERE status = 'expired' OR expiry_date < CURDATE()";
     $stmt = $conn->prepare($sql);
     $stmt->execute();
     $stats['expired'] = $stmt->fetch(PDO::FETCH_ASSOC)['expired'];
     
-    $sql = "SELECT COUNT(*) as expiring_soon FROM lto_vehicle_registration WHERE expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY) AND status = 'active'";
+    $sql = "SELECT COUNT(*) as expiring_soon FROM lto_registrations WHERE expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY) AND status = 'active'";
     $stmt = $conn->prepare($sql);
     $stmt->execute();
     $stats['expiring_soon'] = $stmt->fetch(PDO::FETCH_ASSOC)['expiring_soon'];
     
     return $stats;
+}
+
+function getLTORegistrations($conn) {
+    $sql = "SELECT * FROM lto_registrations ORDER BY registration_date DESC";
+    try {
+        $stmt = $conn->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch(PDOException $e) {
+        return [];
+    }
+}
+
+function approveLTORegistrationWithPlate($conn, $lto_id, $plate_number) {
+    // Check if plate number already exists
+    $check_query = "SELECT COUNT(*) FROM lto_registrations WHERE plate_number = ?";
+    $check_stmt = $conn->prepare($check_query);
+    $check_stmt->execute([$plate_number]);
+    
+    if ($check_stmt->fetchColumn() > 0) {
+        return ['success' => false, 'message' => 'Plate number already exists'];
+    }
+    
+    $query = "UPDATE lto_registrations SET 
+              plate_number = :plate_number, 
+              status = 'active',
+              remarks = 'Registration approved and plate number assigned'
+              WHERE lto_registration_id = :lto_id AND status = 'pending' AND registration_type = 'new' AND plate_number IS NULL";
+    $stmt = $conn->prepare($query);
+    $success = $stmt->execute(['plate_number' => $plate_number, 'lto_id' => $lto_id]);
+    
+    if ($success && $stmt->rowCount() > 0) {
+        return ['success' => true];
+    } else {
+        return ['success' => false, 'message' => 'Failed to approve registration or registration not eligible'];
+    }
+}
+
+function approveLTORegistration($conn, $lto_id) {
+    // Generate plate number for new registrations
+    $plate_number = generatePlateNumber($conn);
+    
+    $query = "UPDATE lto_registrations SET 
+              plate_number = :plate_number, 
+              status = 'active',
+              remarks = 'Registration approved and plate number assigned'
+              WHERE lto_registration_id = :lto_id AND status = 'pending' AND registration_type = 'new' AND plate_number IS NULL";
+    $stmt = $conn->prepare($query);
+    $success = $stmt->execute(['plate_number' => $plate_number, 'lto_id' => $lto_id]);
+    
+    if ($success && $stmt->rowCount() > 0) {
+        return ['success' => true, 'plate_number' => $plate_number];
+    } else {
+        return ['success' => false, 'plate_number' => null];
+    }
+}
+
+function getApprovedLTORegistrations($conn) {
+    $query = "SELECT lto_registration_id, owner_first_name, owner_last_name, license_number, license_expiry,
+                     make, model, year_model, plate_number, engine_number, chassis_number, body_type,
+                     owner_address, classification, registration_date, expiry_date
+              FROM lto_registrations 
+              WHERE status = 'active' AND plate_number IS NOT NULL
+              ORDER BY owner_last_name, owner_first_name";
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function generatePlateNumber($conn) {
+    // Generate Philippine plate number format: ABC 1234
+    $letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+    
+    do {
+        $plate = $letters[array_rand($letters)] . $letters[array_rand($letters)] . $letters[array_rand($letters)] . ' ' . rand(1000, 9999);
+        
+        // Check if plate already exists
+        $query = "SELECT COUNT(*) FROM lto_registrations WHERE plate_number = ?";
+        $stmt = $conn->prepare($query);
+        $stmt->execute([$plate]);
+        $exists = $stmt->fetchColumn() > 0;
+    } while ($exists);
+    
+    return $plate;
 }
 
 function generateLTORegistrationId($conn) {
@@ -328,6 +421,8 @@ function generateLTORegistrationId($conn) {
     $next_id = str_pad($stmt->fetch(PDO::FETCH_ASSOC)['next_id'], 4, '0', STR_PAD_LEFT);
     return "LTO-{$year}-{$next_id}";
 }
+
+
 
 // Franchise Application Functions
 function getFranchiseApplications($conn) {
@@ -444,12 +539,17 @@ function getRoutes($conn) {
 }
 
 function getRouteSchedules($conn) {
-    $query = "SELECT rs.*, r.route_name, r.route_code, o.first_name, o.last_name, v.plate_number, v.vehicle_type
+    $query = "SELECT rs.*, r.route_name, r.route_code, o.first_name, o.last_name, v.plate_number, v.vehicle_type,
+              COALESCE(rs.service_type, 'regular') as service_type,
+              COALESCE(rs.service_frequency_minutes, 30) as service_frequency_minutes,
+              COALESCE(rs.trips_per_day, 20) as trips_per_day,
+              COALESCE(rs.service_start_time, '05:00:00') as service_start_time,
+              COALESCE(rs.service_end_time, '22:00:00') as service_end_time
               FROM route_schedules rs
               LEFT JOIN official_routes r ON rs.route_id = r.route_id
               LEFT JOIN operators o ON rs.operator_id = o.operator_id
               LEFT JOIN vehicles v ON rs.vehicle_id = v.vehicle_id
-              ORDER BY rs.departure_time";
+              ORDER BY rs.service_start_time";
     $stmt = $conn->prepare($query);
     $stmt->execute();
     return $stmt->fetchAll(PDO::FETCH_ASSOC);

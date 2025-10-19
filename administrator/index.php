@@ -242,15 +242,16 @@ $moduleStats = getModuleStats($conn);
                 </div>
 
                 <div class="space-y-1">
-                    <button onclick="toggleDropdown('terminal-mgmt')" class="w-full flex items-center justify-between p-2 rounded-xl text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all">
+                    <button onclick="toggleDropdown('parking-terminal-mgmt')" class="w-full flex items-center justify-between p-2 rounded-xl text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all">
                         <div class="flex items-center">
                             <i data-lucide="map-pin" class="w-5 h-5 mr-3"></i>
-                            <span class="text-sm font-medium">Terminal Management</span>
+                            <span class="text-sm font-medium">Parking & Terminal Management</span>
                         </div>
-                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="terminal-mgmt-icon"></i>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="parking-terminal-mgmt-icon"></i>
                     </button>
-                    <div id="terminal-mgmt-menu" class="hidden ml-8 space-y-1">
-                        <a href="parking_and_terminal_management/terminal_assignment_management/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Terminal Assignment</a>
+                    <div id="parking-terminal-mgmt-menu" class="hidden ml-8 space-y-1">
+                        <a href="parking_and_terminal_management/parking_area_management/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Parking Area Management</a>
+                        <a href="parking_and_terminal_management/terminal_assignment_management/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Terminal Assignment Management</a>
                         <a href="parking_and_terminal_management/roster_and_delivery/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Roster & Directory</a>
                         <a href="parking_and_terminal_management/public_transparency/" class="block p-2 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg">Public Transparency</a>
                     </div>

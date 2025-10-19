@@ -282,10 +282,11 @@ if ($status_filter || $type_filter || $stage_filter || $date_filter) {
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-bold text-slate-900 dark:text-white">Franchise Application Workflow</h2>
                     <div class="flex space-x-3">
-                        <button onclick="openNewApplicationModal()" class="px-4 py-2 text-white rounded-lg flex items-center space-x-2 transition-colors" style="background-color: #4CAF50;" onmouseover="this.style.backgroundColor='#45A049'" onmouseout="this.style.backgroundColor='#4CAF50'">
+                        <button onclick="openFranchiseApplicationModal()" class="px-4 py-2 text-white rounded-lg flex items-center space-x-2 transition-colors" style="background-color: #4CAF50;" onmouseover="this.style.backgroundColor='#45A049'" onmouseout="this.style.backgroundColor='#4CAF50'">
                             <i data-lucide="plus" class="w-4 h-4"></i>
-                            <span>New Application</span>
+                            <span>Franchise Application</span>
                         </button>
+
                         <div class="relative">
                             <button onclick="toggleExportMenu()" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 flex items-center space-x-2">
                                 <i data-lucide="download" class="w-4 h-4"></i>
@@ -397,9 +398,12 @@ if ($status_filter || $type_filter || $stage_filter || $date_filter) {
                                                 <i data-lucide="clock" class="w-4 h-4"></i>
                                             </button>
                                             <?php endif; ?>
-                                            <?php if ($app['workflow_stage'] == 'approval' && $app['status'] != 'approved'): ?>
+                                            <?php if ($app['workflow_stage'] == 'approval' && $app['status'] != 'approved' && $app['status'] != 'rejected'): ?>
                                             <button onclick="approveApplication('<?php echo $app['application_id']; ?>')" class="p-1 text-green-600 hover:bg-green-100 rounded" title="Approve">
                                                 <i data-lucide="check" class="w-4 h-4"></i>
+                                            </button>
+                                            <button onclick="openRejectModal('<?php echo $app['application_id']; ?>')" class="p-1 text-red-600 hover:bg-red-100 rounded" title="Reject">
+                                                <i data-lucide="x" class="w-4 h-4"></i>
                                             </button>
                                             <?php endif; ?>
                                         </div>
@@ -416,75 +420,85 @@ if ($status_filter || $type_filter || $stage_filter || $date_filter) {
 
 
 
-    <!-- New Application Modal -->
-    <div id="newApplicationModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+    <!-- Unified Franchise Application Modal -->
+    <div id="franchiseApplicationModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
         <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg shadow-xl max-w-lg w-full">
+            <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
                 <div class="flex justify-between items-center p-6 border-b">
-                    <h3 class="text-lg font-semibold">New Franchise Application</h3>
-                    <button onclick="closeModal('newApplicationModal')" class="text-gray-400 hover:text-gray-600">
+                    <h3 class="text-lg font-semibold">Franchise Application</h3>
+                    <button onclick="closeModal('franchiseApplicationModal')" class="text-gray-400 hover:text-gray-600">
                         <i data-lucide="x" class="w-5 h-5"></i>
                     </button>
                 </div>
                 <div class="p-6">
                     <div class="space-y-4">
+                        <!-- Select Operator -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Operator</label>
-                            <select id="operatorId" class="w-full border border-gray-300 rounded-lg px-3 py-2" onchange="loadVehicles()">
-                                <option value="">Select Operator</option>
-                                <?php 
-                                $op_query = "SELECT operator_id, first_name, last_name FROM operators ORDER BY first_name";
-                                $op_stmt = $conn->prepare($op_query);
-                                $op_stmt->execute();
-                                $operators = $op_stmt->fetchAll(PDO::FETCH_ASSOC);
-                                foreach ($operators as $op): ?>
-                                <option value="<?php echo $op['operator_id']; ?>"><?php echo $op['first_name'] . ' ' . $op['last_name'] . ' (' . $op['operator_id'] . ')'; ?></option>
-                                <?php endforeach; ?>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">LTO Registered Operator</label>
+                            <select id="operatorSelect" class="w-full border border-gray-300 rounded-lg px-3 py-2" onchange="loadOperatorVehicles()" required>
+                                <option value="">Select an operator...</option>
+                                <!-- Populated by JavaScript -->
                             </select>
                         </div>
-
+                        
+                        <!-- Operator Details (Auto-filled) -->
+                        <div id="operatorDetails" class="hidden bg-gray-50 border border-gray-200 p-4 rounded-lg">
+                            <h5 class="font-medium text-gray-800 mb-2">Operator Details</h5>
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div><strong>Name:</strong> <span id="operatorName"></span></div>
+                                <div><strong>License:</strong> <span id="operatorLicense"></span></div>
+                                <div class="col-span-2"><strong>Address:</strong> <span id="operatorAddress"></span></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Select Vehicle -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Vehicle</label>
-                            <select id="vehicleId" class="w-full border border-gray-300 rounded-lg px-3 py-2" disabled>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Select Vehicle</label>
+                            <select id="vehicleSelect" class="w-full border border-gray-300 rounded-lg px-3 py-2" onchange="loadVehicleDetails()" required disabled>
                                 <option value="">Select operator first</option>
                             </select>
                         </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Application Type</label>
-                            <select id="applicationType" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                                <option value="new">New Franchise</option>
-                                <option value="renewal">Renewal</option>
-                                <option value="amendment">Amendment</option>
-                            </select>
+                        
+                        <!-- Vehicle Details (Auto-filled) -->
+                        <div id="vehicleDetails" class="hidden bg-green-50 border border-green-200 p-4 rounded-lg">
+                            <h5 class="font-medium text-green-800 mb-2">Vehicle Details</h5>
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div><strong>Plate:</strong> <span id="vehiclePlate"></span></div>
+                                <div><strong>Make/Model:</strong> <span id="vehicleMakeModel"></span></div>
+                                <div><strong>Year:</strong> <span id="vehicleYear"></span></div>
+                                <div><strong>OR/CR:</strong> <span id="vehicleORCR"></span></div>
+                            </div>
                         </div>
+                        
+                        <!-- Route Selection -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Route Requested</label>
-                            <select id="routeRequested" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                            <select id="routeSelect" class="w-full border border-gray-300 rounded-lg px-3 py-2" required>
                                 <option value="">Select Route</option>
-                                <?php 
-                                $route_query = "SELECT route_id, route_name, route_code FROM official_routes WHERE status = 'active' ORDER BY route_name";
-                                $route_stmt = $conn->prepare($route_query);
-                                $route_stmt->execute();
-                                $routes = $route_stmt->fetchAll(PDO::FETCH_ASSOC);
-                                foreach ($routes as $route): ?>
+                                <?php foreach ($routes as $route): ?>
                                 <option value="<?php echo $route['route_name']; ?>"><?php echo $route['route_code'] . ' - ' . $route['route_name']; ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
+                        
+                        <!-- Hidden inputs -->
+                        <input type="hidden" id="selectedOperatorId">
+                        <input type="hidden" id="selectedVehicleId">
                     </div>
                 </div>
                 <div class="flex justify-end space-x-3 p-6 border-t">
-                    <button onclick="closeModal('newApplicationModal')" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                    <button onclick="closeModal('franchiseApplicationModal')" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
                         Cancel
                     </button>
-                    <button onclick="createApplication()" class="px-4 py-2 text-white rounded-lg transition-colors" style="background-color: #4CAF50;" onmouseover="this.style.backgroundColor='#45A049'" onmouseout="this.style.backgroundColor='#4CAF50'">
-                        Create Application
+                    <button onclick="submitApplication()" class="px-4 py-2 text-white rounded-lg transition-colors" style="background-color: #4CAF50;" onmouseover="this.style.backgroundColor='#45A049'" onmouseout="this.style.backgroundColor='#4CAF50'">
+                        Submit Application
                     </button>
                 </div>
             </div>
         </div>
     </div>
+
+
 
     <!-- Route Workflow Modal -->
     <div id="routeWorkflowModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
@@ -571,6 +585,176 @@ if ($status_filter || $type_filter || $stage_filter || $date_filter) {
                     <button onclick="setTimeline()" class="px-4 py-2 text-white rounded-lg transition-colors" style="background-color: #4CAF50;" onmouseover="this.style.backgroundColor='#45A049'" onmouseout="this.style.backgroundColor='#4CAF50'">
                         Set Timeline
                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reject Application Modal -->
+    <div id="rejectModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-lg w-full">
+                <div class="flex justify-between items-center p-6 border-b">
+                    <h3 class="text-lg font-semibold text-red-600">Reject Application</h3>
+                    <button onclick="closeModal('rejectModal')" class="text-gray-400 hover:text-gray-600">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <div class="p-6">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Application ID</label>
+                            <input type="text" id="rejectAppId" class="w-full border border-gray-300 rounded-lg px-3 py-2" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Rejection Reason</label>
+                            <select id="rejectionReason" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                                <option value="">Select reason</option>
+                                <option value="Incomplete Documentation">Incomplete Documentation</option>
+                                <option value="Vehicle Safety Issues">Vehicle Safety Issues</option>
+                                <option value="Route Oversaturation">Route Oversaturation</option>
+                                <option value="Non-compliance with Regulations">Non-compliance with Regulations</option>
+                                <option value="Failed Vehicle Inspection">Failed Vehicle Inspection</option>
+                                <option value="Invalid Operator Credentials">Invalid Operator Credentials</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Additional Remarks</label>
+                            <textarea id="rejectionRemarks" rows="4" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="Provide detailed explanation for rejection..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 p-6 border-t">
+                    <button onclick="closeModal('rejectModal')" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button onclick="rejectApplication()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                        Reject Application
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Renewal Application Modal -->
+    <div id="renewalModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center p-6 border-b">
+                    <h3 class="text-lg font-semibold">Renew Existing Franchise</h3>
+                    <button onclick="closeModal('renewalModal')" class="text-gray-400 hover:text-gray-600">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <div class="p-6">
+                    <div class="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-4">
+                        <h5 class="font-medium text-blue-800 mb-2">Franchise Renewal</h5>
+                        <p class="text-sm text-blue-700">Select existing franchise to renew. All operator and vehicle details are already on file.</p>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Existing Franchise</label>
+                            <select id="existingFranchiseSelect" class="w-full border border-gray-300 rounded-lg px-3 py-2" onchange="loadFranchiseDetails()" required>
+                                <option value="">Select Franchise to Renew</option>
+                                <!-- Will be populated by JavaScript -->
+                            </select>
+                        </div>
+                        
+                        <div id="franchiseDetails" class="hidden bg-gray-50 p-4 rounded-lg">
+                            <h5 class="font-medium text-gray-800 mb-2">Franchise Details:</h5>
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div><strong>Operator:</strong> <span id="renewalOperator"></span></div>
+                                <div><strong>Vehicle:</strong> <span id="renewalVehicle"></span></div>
+                                <div><strong>Route:</strong> <span id="renewalRoute"></span></div>
+                                <div><strong>Expires:</strong> <span id="renewalExpiry"></span></div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Renewal Period</label>
+                            <select id="renewalPeriod" class="w-full border border-gray-300 rounded-lg px-3 py-2" required>
+                                <option value="1">1 Year</option>
+                                <option value="2">2 Years</option>
+                                <option value="3">3 Years</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 p-6 border-t">
+                    <button onclick="closeModal('renewalModal')" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+                    <button onclick="submitRenewal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Submit Renewal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Multi-Vehicle Application Modal -->
+    <div id="multiVehicleModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center p-6 border-b">
+                    <h3 class="text-lg font-semibold">Add Vehicle to Existing Operator</h3>
+                    <button onclick="closeModal('multiVehicleModal')" class="text-gray-400 hover:text-gray-600">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <div class="p-6">
+                    <div class="bg-purple-50 border border-purple-200 p-4 rounded-lg mb-4">
+                        <h5 class="font-medium text-purple-800 mb-2">Additional Vehicle Franchise</h5>
+                        <p class="text-sm text-purple-700">For existing operators adding another vehicle. Operator details are auto-filled.</p>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Existing Operator</label>
+                            <select id="existingOperatorSelect" class="w-full border border-gray-300 rounded-lg px-3 py-2" onchange="loadOperatorInfo()" required>
+                                <option value="">Select Existing Operator</option>
+                                <!-- Will be populated by JavaScript -->
+                            </select>
+                        </div>
+                        
+                        <div id="operatorInfo" class="hidden bg-gray-50 p-4 rounded-lg">
+                            <h5 class="font-medium text-gray-800 mb-2">Operator Details:</h5>
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div><strong>Name:</strong> <span id="multiOperatorName"></span></div>
+                                <div><strong>License:</strong> <span id="multiOperatorLicense"></span></div>
+                                <div><strong>Address:</strong> <span id="multiOperatorAddress"></span></div>
+                                <div><strong>Contact:</strong> <span id="multiOperatorContact"></span></div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">New LTO Registered Vehicle</label>
+                            <select id="multiVehicleSelect" class="w-full border border-gray-300 rounded-lg px-3 py-2" onchange="loadMultiVehicleDetails()" required>
+                                <option value="">Select LTO Registered Vehicle</option>
+                                <!-- Will be populated by JavaScript -->
+                            </select>
+                        </div>
+                        
+                        <div id="multiVehicleDetails" class="hidden bg-gray-50 p-4 rounded-lg">
+                            <h5 class="font-medium text-gray-800 mb-2">Vehicle Details:</h5>
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div><strong>Plate:</strong> <span id="multiVehiclePlate"></span></div>
+                                <div><strong>Make/Model:</strong> <span id="multiVehicleMakeModel"></span></div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Route Requested</label>
+                            <select id="multiRouteRequested" class="w-full border border-gray-300 rounded-lg px-3 py-2" required>
+                                <option value="">Select Route</option>
+                                <?php foreach ($routes as $route): ?>
+                                <option value="<?php echo $route['route_name']; ?>"><?php echo $route['route_code'] . ' - ' . $route['route_name']; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 p-6 border-t">
+                    <button onclick="closeModal('multiVehicleModal')" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+                    <button onclick="submitMultiVehicle()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Add Vehicle Franchise</button>
                 </div>
             </div>
         </div>
@@ -674,8 +858,355 @@ if ($status_filter || $type_filter || $stage_filter || $date_filter) {
         
 
 
-        function openNewApplicationModal() {
-            document.getElementById('newApplicationModal').classList.remove('hidden');
+        function openFranchiseApplicationModal() {
+            loadLTOOperators();
+            document.getElementById('franchiseApplicationModal').classList.remove('hidden');
+        }
+        
+        function loadExistingFranchises() {
+            fetch('get_existing_franchises.php')
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.getElementById('existingFranchiseSelect');
+                    select.innerHTML = '<option value="">Select Franchise to Renew</option>';
+                    if (data.success && data.franchises) {
+                        data.franchises.forEach(franchise => {
+                            select.innerHTML += `<option value="${franchise.franchise_id}">${franchise.operator_name} - ${franchise.plate_number} (${franchise.route})</option>`;
+                        });
+                    }
+                })
+                .catch(error => console.error('Error loading franchises:', error));
+        }
+        
+        function loadFranchiseDetails() {
+            const franchiseId = document.getElementById('existingFranchiseSelect').value;
+            if (!franchiseId) {
+                document.getElementById('franchiseDetails').classList.add('hidden');
+                return;
+            }
+            
+            fetch(`get_franchise_details.php?id=${franchiseId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const franchise = data.franchise;
+                        document.getElementById('renewalOperator').textContent = franchise.operator_name;
+                        document.getElementById('renewalVehicle').textContent = `${franchise.plate_number} - ${franchise.vehicle_type}`;
+                        document.getElementById('renewalRoute').textContent = franchise.route;
+                        document.getElementById('renewalExpiry').textContent = franchise.expiry_date;
+                        document.getElementById('franchiseDetails').classList.remove('hidden');
+                    }
+                })
+                .catch(error => console.error('Error loading franchise details:', error));
+        }
+        
+        function loadOperatorInfo() {
+            const operatorId = document.getElementById('existingOperatorSelect').value;
+            if (!operatorId) {
+                document.getElementById('operatorInfo').classList.add('hidden');
+                return;
+            }
+            
+            fetch(`get_operator_info.php?id=${operatorId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const operator = data.operator;
+                        document.getElementById('multiOperatorName').textContent = `${operator.first_name} ${operator.last_name}`;
+                        document.getElementById('multiOperatorLicense').textContent = operator.license_number;
+                        document.getElementById('multiOperatorAddress').textContent = operator.address;
+                        document.getElementById('multiOperatorContact').textContent = operator.contact_number;
+                        document.getElementById('operatorInfo').classList.remove('hidden');
+                        
+                        // Load available vehicles for this operator
+                        loadAvailableVehiclesForOperator(operatorId);
+                    }
+                })
+                .catch(error => console.error('Error loading operator info:', error));
+        }
+        
+        function loadAvailableVehiclesForOperator(operatorId) {
+            fetch(`get_available_vehicles.php?operator_id=${operatorId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.getElementById('multiVehicleSelect');
+                    select.innerHTML = '<option value="">Select LTO Registered Vehicle</option>';
+                    if (data.success && data.vehicles) {
+                        data.vehicles.forEach(vehicle => {
+                            select.innerHTML += `<option value="${vehicle.lto_registration_id}">${vehicle.plate_number} - ${vehicle.make} ${vehicle.model}</option>`;
+                        });
+                    }
+                })
+                .catch(error => console.error('Error loading vehicles:', error));
+        }
+        
+        function loadMultiVehicleDetails() {
+            const ltoId = document.getElementById('multiVehicleSelect').value;
+            if (!ltoId) {
+                document.getElementById('multiVehicleDetails').classList.add('hidden');
+                return;
+            }
+            
+            fetch(`get_lto_vehicle_details.php?id=${ltoId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const vehicle = data.vehicle;
+                        document.getElementById('multiVehiclePlate').textContent = vehicle.plate_number;
+                        document.getElementById('multiVehicleMakeModel').textContent = `${vehicle.make} ${vehicle.model} (${vehicle.year_model})`;
+                        document.getElementById('multiVehicleDetails').classList.remove('hidden');
+                    }
+                })
+                .catch(error => console.error('Error loading vehicle details:', error));
+        }
+        
+        function submitRenewal() {
+            const franchiseId = document.getElementById('existingFranchiseSelect').value;
+            const renewalPeriod = document.getElementById('renewalPeriod').value;
+            
+            if (!franchiseId || !renewalPeriod) {
+                alert('Please select franchise and renewal period');
+                return;
+            }
+            
+            fetch('simple_handler.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: new URLSearchParams({
+                    action: 'renew_franchise',
+                    franchise_id: franchiseId,
+                    renewal_period: renewalPeriod
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeModal('renewalModal');
+                    alert('Franchise renewal application submitted successfully!');
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('Network error occurred');
+            });
+        }
+        
+        function submitMultiVehicle() {
+            const operatorId = document.getElementById('existingOperatorSelect').value;
+            const ltoId = document.getElementById('multiVehicleSelect').value;
+            const route = document.getElementById('multiRouteRequested').value;
+            
+            if (!operatorId || !ltoId || !route) {
+                alert('Please fill all required fields');
+                return;
+            }
+            
+            fetch('simple_handler.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: new URLSearchParams({
+                    action: 'add_vehicle_franchise',
+                    operator_id: operatorId,
+                    lto_registration_id: ltoId,
+                    route_requested: route
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeModal('multiVehicleModal');
+                    alert('Additional vehicle franchise application submitted successfully!');
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('Network error occurred');
+            });
+        }
+        
+
+        
+        function loadExistingOperators() {
+            fetch('get_operators.php')
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.getElementById('existingOperatorSelect');
+                    select.innerHTML = '<option value="">Select Operator</option>';
+                    if (data.success && data.operators) {
+                        data.operators.forEach(operator => {
+                            select.innerHTML += `<option value="${operator.operator_id}">${operator.first_name} ${operator.last_name} (${operator.license_number})</option>`;
+                        });
+                    }
+                })
+                .catch(error => console.error('Error loading operators:', error));
+        }
+        
+        function loadOperatorDetails() {
+            const operatorId = document.getElementById('existingOperatorSelect').value;
+            if (!operatorId) {
+                document.getElementById('operatorDetails').classList.add('hidden');
+                return;
+            }
+            
+            fetch(`get_operator_details.php?id=${operatorId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('detailName').textContent = `${data.operator.first_name} ${data.operator.last_name}`;
+                        document.getElementById('detailLicense').textContent = data.operator.license_number;
+                        document.getElementById('detailContact').textContent = data.operator.contact_number;
+                        document.getElementById('detailEmail').textContent = data.operator.email || 'N/A';
+                        document.getElementById('operatorDetails').classList.remove('hidden');
+                    }
+                })
+                .catch(error => console.error('Error loading operator details:', error));
+        }
+        
+        function loadLTOOperators() {
+            fetch('get_lto_operators.php')
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.getElementById('ltoOperatorSelect');
+                    select.innerHTML = '<option value="">Select an operator...</option>';
+                    if (data.success && data.operators) {
+                        data.operators.forEach(operator => {
+                            select.innerHTML += `<option value="${operator.owner_name}">${operator.owner_name} (${operator.license_number})</option>`;
+                        });
+                    }
+                })
+                .catch(error => console.error('Error loading LTO operators:', error));
+        }
+        
+        function loadOperatorVehicles() {
+            const operatorName = document.getElementById('operatorSelect').value;
+            const vehicleSelect = document.getElementById('vehicleSelect');
+            const operatorDetails = document.getElementById('operatorDetails');
+            
+            if (!operatorName) {
+                vehicleSelect.innerHTML = '<option value="">Select operator first</option>';
+                vehicleSelect.disabled = true;
+                operatorDetails.classList.add('hidden');
+                return;
+            }
+            
+            fetch(`get_operator_lto_vehicles.php?operator_name=${encodeURIComponent(operatorName)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Display operator details
+                        if (data.operator) {
+                            document.getElementById('operatorName').textContent = data.operator.owner_name;
+                            document.getElementById('operatorLicense').textContent = data.operator.license_number;
+                            document.getElementById('operatorAddress').textContent = data.operator.owner_address;
+                            document.getElementById('selectedOperatorId').value = data.operator.lto_registration_id;
+                            operatorDetails.classList.remove('hidden');
+                        }
+                        
+                        // Load vehicles
+                        vehicleSelect.innerHTML = '<option value="">Select vehicle...</option>';
+                        if (data.vehicles && data.vehicles.length > 0) {
+                            data.vehicles.forEach(vehicle => {
+                                vehicleSelect.innerHTML += `<option value="${vehicle.lto_registration_id}">${vehicle.plate_number} - ${vehicle.make} ${vehicle.model} (${vehicle.year_model})</option>`;
+                            });
+                            vehicleSelect.disabled = false;
+                        } else {
+                            vehicleSelect.innerHTML = '<option value="">No vehicles found for this operator</option>';
+                            vehicleSelect.disabled = true;
+                        }
+                    }
+                })
+                .catch(error => console.error('Error loading operator vehicles:', error));
+        }
+        
+        function loadVehicleDetails() {
+            const ltoId = document.getElementById('vehicleSelect').value;
+            if (!ltoId) {
+                document.getElementById('vehicleDetails').classList.add('hidden');
+                return;
+            }
+            
+            fetch(`get_lto_vehicle_details.php?id=${ltoId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const vehicle = data.vehicle;
+                        
+                        // Display vehicle details
+                        document.getElementById('vehiclePlate').textContent = vehicle.plate_number || 'Not assigned';
+                        document.getElementById('vehicleMakeModel').textContent = `${vehicle.make} ${vehicle.model}`;
+                        document.getElementById('vehicleYear').textContent = vehicle.year_model;
+                        document.getElementById('vehicleORCR').textContent = `${vehicle.or_number}/${vehicle.cr_number}`;
+                        
+                        // Store selected vehicle LTO ID
+                        document.getElementById('selectedVehicleId').value = ltoId;
+                        
+                        document.getElementById('vehicleDetails').classList.remove('hidden');
+                    }
+                })
+                .catch(error => console.error('Error loading vehicle details:', error));
+        }
+        
+        function createExistingOperatorApplication() {
+            const operatorId = document.getElementById('existingOperatorSelect').value;
+            const makeSelect = document.getElementById('existingVehicleMake');
+            const modelSelect = document.getElementById('existingVehicleModel');
+            const finalMake = makeSelect.value === 'Other' ? document.getElementById('existingVehicleMakeOther').value : makeSelect.value;
+            const finalModel = modelSelect.value === 'Other' ? document.getElementById('existingVehicleModelOther').value : modelSelect.value;
+            
+            if (!operatorId) {
+                alert('Please select an operator');
+                return;
+            }
+            
+            const vehicleData = {
+                plate_number: document.getElementById('existingVehiclePlateNumber').value,
+                vehicle_type: document.getElementById('existingVehicleType').value,
+                make: finalMake,
+                model: finalModel,
+                year_manufactured: document.getElementById('existingVehicleYear').value,
+                engine_number: document.getElementById('existingVehicleEngineNumber').value,
+                chassis_number: document.getElementById('existingVehicleChassisNumber').value,
+                color: document.getElementById('existingVehicleColor').value,
+                seating_capacity: document.getElementById('existingVehicleSeatingCapacity').value
+            };
+            
+            const routeRequested = document.getElementById('existingRouteRequested').value;
+            
+            if (!vehicleData.plate_number || !routeRequested) {
+                alert('Please fill in all required fields');
+                return;
+            }
+            
+            const formData = new URLSearchParams({
+                action: 'create_existing_operator_application',
+                operator_id: operatorId,
+                route_requested: routeRequested,
+                ...Object.fromEntries(Object.entries(vehicleData).map(([k, v]) => [`vehicle_${k}`, v]))
+            });
+            
+            fetch('simple_handler.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeModal('existingOperatorModal');
+                    alert(`Application created with ID: ${data.application_id}`);
+                    location.reload();
+                } else {
+                    alert('Failed to create application: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Create error:', error);
+                alert('Error creating application');
+            });
         }
 
         function openRouteWorkflowModal(appId) {
@@ -788,15 +1319,150 @@ if ($status_filter || $type_filter || $stage_filter || $date_filter) {
                 });
         }
 
-        // Create new application
-        function createApplication() {
-            const operatorId = document.getElementById('operatorId').value;
-            const vehicleId = document.getElementById('vehicleId').value;
-            const applicationType = document.getElementById('applicationType').value;
-            const routeRequested = document.getElementById('routeRequested').value;
+        // Validation functions
+        function validateLicenseNumber(license) {
+            const pattern = /^(D\d{2}-\d{2}-\d{6}|[A-Z]\d{2}-\d{8}|\d{2}-\d{8})$/;
+            return pattern.test(license);
+        }
+        
+        function validatePlateNumber(plate) {
+            const pattern = /^[A-Z]{3}\s?\d{3,4}$/;
+            return pattern.test(plate);
+        }
+        
+        function formatPlateNumber(plate) {
+            return plate.replace(/^([A-Z]{3})(\d{3,4})$/, '$1 $2');
+        }
+        
+        function validateEngineNumber(engine) {
+            const pattern = /^[A-Z0-9-]{5,20}$/;
+            return pattern.test(engine);
+        }
+        
+        function validateChassisNumber(chassis) {
+            const pattern = /^[A-HJ-NPR-Z0-9]{17}$/;
+            return pattern.test(chassis);
+        }
+        
+        // Vehicle make/model data
+        const vehicleModels = {
+            'Toyota': ['Hiace', 'Coaster', 'Innova', 'Vios', 'Avanza'],
+            'Isuzu': ['Elf', 'Forward', 'Crosswind', 'D-Max', 'Traviz'],
+            'Mitsubishi': ['L300', 'Fuso', 'Adventure', 'Montero', 'Mirage'],
+            'Hyundai': ['County', 'H100', 'Starex', 'Accent', 'Tucson'],
+            'Nissan': ['Urvan', 'Navara', 'Patrol', 'Almera', 'X-Trail']
+        };
+        
+        function loadModels() {
+            const make = document.getElementById('vehicleMake').value;
+            const modelSelect = document.getElementById('vehicleModel');
+            const makeOther = document.getElementById('vehicleMakeOther');
+            const modelOther = document.getElementById('vehicleModelOther');
             
-            if (!operatorId || !vehicleId || !routeRequested) {
-                alert('Please select an operator, vehicle, and route');
+            if (make === 'Other') {
+                makeOther.classList.remove('hidden');
+                modelSelect.classList.add('hidden');
+                modelOther.classList.remove('hidden');
+                makeOther.required = true;
+                modelOther.required = true;
+                modelSelect.required = false;
+            } else {
+                makeOther.classList.add('hidden');
+                modelSelect.classList.remove('hidden');
+                modelOther.classList.add('hidden');
+                makeOther.required = false;
+                modelOther.required = false;
+                modelSelect.required = true;
+                
+                modelSelect.innerHTML = '<option value="">Select Model</option>';
+                if (make && vehicleModels[make]) {
+                    vehicleModels[make].forEach(model => {
+                        modelSelect.innerHTML += `<option value="${model}">${model}</option>`;
+                    });
+                    modelSelect.innerHTML += '<option value="Other">Other</option>';
+                }
+            }
+        }
+        
+        function loadModelsExisting() {
+            const make = document.getElementById('existingVehicleMake').value;
+            const modelSelect = document.getElementById('existingVehicleModel');
+            const makeOther = document.getElementById('existingVehicleMakeOther');
+            const modelOther = document.getElementById('existingVehicleModelOther');
+            
+            if (make === 'Other') {
+                makeOther.classList.remove('hidden');
+                modelSelect.classList.add('hidden');
+                modelOther.classList.remove('hidden');
+            } else {
+                makeOther.classList.add('hidden');
+                modelSelect.classList.remove('hidden');
+                modelOther.classList.add('hidden');
+                
+                modelSelect.innerHTML = '<option value="">Select Model</option>';
+                if (make && vehicleModels[make]) {
+                    vehicleModels[make].forEach(model => {
+                        modelSelect.innerHTML += `<option value="${model}">${model}</option>`;
+                    });
+                    modelSelect.innerHTML += '<option value="Other">Other</option>';
+                }
+            }
+        }
+        
+        // Add input event listeners for real-time validation
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load operators for franchise application
+            function loadLTOOperators() {
+                fetch('get_lto_operators.php')
+                    .then(response => response.json())
+                    .then(data => {
+                        const select = document.getElementById('operatorSelect');
+                        if (select) {
+                            select.innerHTML = '<option value="">Select an operator...</option>';
+                            if (data.success && data.operators) {
+                                data.operators.forEach(operator => {
+                                    select.innerHTML += `<option value="${operator.owner_name}">${operator.owner_name} (${operator.license_number})</option>`;
+                                });
+                            }
+                        }
+                    })
+                    .catch(error => console.error('Error loading LTO operators:', error));
+            }
+            
+            const plateInput = document.getElementById('vehiclePlateNumber');
+            const licenseInput = document.getElementById('operatorLicense');
+            const engineInput = document.getElementById('vehicleEngineNumber');
+            const chassisInput = document.getElementById('vehicleChassisNumber');
+            
+            plateInput.addEventListener('input', function() {
+                let value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                if (value.length >= 6) {
+                    value = value.substring(0, 3) + ' ' + value.substring(3);
+                }
+                this.value = value;
+            });
+            
+            licenseInput.addEventListener('input', function() {
+                this.value = this.value.toUpperCase();
+            });
+            
+            engineInput.addEventListener('input', function() {
+                this.value = this.value.toUpperCase();
+            });
+            
+            chassisInput.addEventListener('input', function() {
+                this.value = this.value.toUpperCase();
+            });
+        });
+
+        // Submit unified application
+        function submitApplication() {
+            const operatorId = document.getElementById('selectedOperatorId').value;
+            const vehicleId = document.getElementById('selectedVehicleId').value;
+            const route = document.getElementById('routeSelect').value;
+            
+            if (!operatorId || !vehicleId || !route) {
+                alert('Please fill all required fields');
                 return;
             }
             
@@ -804,26 +1470,25 @@ if ($status_filter || $type_filter || $stage_filter || $date_filter) {
                 method: 'POST',
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                 body: new URLSearchParams({
-                    action: 'assign_application_id',
-                    operator_id: operatorId,
-                    vehicle_id: vehicleId,
-                    application_type: applicationType,
-                    route_requested: routeRequested
+                    action: 'create_new_franchise_application',
+                    operator_lto_id: operatorId,
+                    vehicle_lto_id: vehicleId,
+                    application_type: 'new',
+                    route_requested: route
                 })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    closeModal('newApplicationModal');
-                    alert(`Application created with ID: ${data.application_id}`);
+                    closeModal('franchiseApplicationModal');
+                    alert(`Franchise application submitted successfully!\nApplication ID: ${data.application_id}`);
                     location.reload();
                 } else {
-                    alert('Failed to create application');
+                    alert('Error: ' + (data.message || 'Unknown error'));
                 }
             })
             .catch(error => {
-                console.error('Create error:', error);
-                alert('Error creating application');
+                alert('Network error occurred');
             });
         }
         
@@ -918,6 +1583,49 @@ if ($status_filter || $type_filter || $stage_filter || $date_filter) {
                 .catch(error => {
                     console.error('Approve error:', error);
                     alert('Error approving application');
+                });
+            }
+        }
+        
+        function openRejectModal(applicationId) {
+            document.getElementById('rejectAppId').value = applicationId;
+            document.getElementById('rejectModal').classList.remove('hidden');
+        }
+        
+        function rejectApplication() {
+            const appId = document.getElementById('rejectAppId').value;
+            const reason = document.getElementById('rejectionReason').value;
+            const remarks = document.getElementById('rejectionRemarks').value;
+            
+            if (!reason) {
+                alert('Please select a rejection reason');
+                return;
+            }
+            
+            if (confirm('Are you sure you want to reject this application? This action cannot be undone.')) {
+                fetch('simple_handler.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({
+                        action: 'reject_application',
+                        application_id: appId,
+                        rejection_reason: reason,
+                        remarks: remarks
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        closeModal('rejectModal');
+                        alert('Application rejected successfully!');
+                        location.reload();
+                    } else {
+                        alert('Failed to reject application: ' + (data.message || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Reject error:', error);
+                    alert('Error rejecting application');
                 });
             }
         }

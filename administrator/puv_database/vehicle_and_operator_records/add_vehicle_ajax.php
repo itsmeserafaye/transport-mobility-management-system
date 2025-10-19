@@ -21,6 +21,7 @@ if ($_POST) {
             'year_manufactured' => $_POST['year_manufactured'],
             'engine_number' => $_POST['engine_number'],
             'chassis_number' => $_POST['chassis_number'],
+            'color' => $_POST['color'],
             'seating_capacity' => $_POST['seating_capacity']
         ];
         

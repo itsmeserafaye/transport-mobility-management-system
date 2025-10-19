@@ -214,9 +214,45 @@ This document explains the development process and functionality of each submodu
 
 ---
 
-## 5. Terminal Management Module
+## 5. Parking and Terminal Management Module
 
-### 5.1 Terminal Assignment Management
+### 5.1 Parking Area Management
+**Purpose**: Register and manage official parking locations within the city.
+
+**Process Flow**:
+1. **Area Registration**: Input location, parking type (on-street/off-street), capacity, and operator details
+2. **Unique ID Assignment**: Each area assigned unique ID and categorized by zone or barangay
+3. **Slot Monitoring**: Define total slots and track occupancy in real-time
+4. **Capacity Management**: System calculates available vs occupied slots and flags "Full" status
+
+**Key Features**:
+- Parking area registration with complete details
+- Zone and barangay categorization
+- Real-time slot availability tracking
+- Capacity monitoring and alerts
+- Manual occupancy updates by field officers
+
+**Database Tables**: `parking_areas`, `parking_slots`, `parking_occupancy`
+
+### 5.2 Parking Fee Management
+**Purpose**: Internal logging of parking fees and revenue collection.
+
+**Process Flow**:
+1. **Rate Definition**: Set fixed rates or hourly rates per parking area
+2. **Fee Collection**: Officers record daily collections and issued tickets manually
+3. **Revenue Tracking**: Monitor total collections, vehicle count, and utilization rates
+4. **Report Generation**: Generate summary reports for manual submission
+
+**Key Features**:
+- Flexible rate structure (fixed/hourly)
+- Manual fee collection recording
+- Utilization rate calculations
+- Export functionality for reports
+- Daily collection summaries
+
+**Database Tables**: `parking_rates`, `parking_collections`, `parking_tickets`
+
+### 5.3 Terminal Assignment Management
 **Purpose**: Assign vehicles and operators to specific terminals.
 
 **Process Flow**:
@@ -225,7 +261,7 @@ This document explains the development process and functionality of each submodu
 3. **Capacity Management**: Monitor terminal capacity and utilization
 4. **Schedule Coordination**: Coordinate with route schedules
 
-### 5.2 Roster & Directory
+### 5.4 Roster & Directory
 **Purpose**: Maintain terminal rosters and operator directories.
 
 **Process Flow**:
@@ -234,7 +270,7 @@ This document explains the development process and functionality of each submodu
 3. **Schedule Publishing**: Publish terminal schedules
 4. **Updates**: Handle roster changes and notifications
 
-### 5.3 Public Transparency
+### 5.5 Public Transparency
 **Purpose**: Provide public access to terminal and route information.
 
 **Process Flow**:

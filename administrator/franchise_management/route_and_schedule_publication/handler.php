@@ -52,9 +52,11 @@ try {
                     'route_id' => $_POST['route_id'] ?? '',
                     'operator_id' => $_POST['operator_id'] ?? '',
                     'vehicle_id' => $_POST['vehicle_id'] ?? '',
-                    'departure_time' => $_POST['departure_time'] ?? '',
-                    'arrival_time' => $_POST['arrival_time'] ?? '',
-                    'frequency_minutes' => $_POST['frequency_minutes'] ?? 30,
+                    'service_start_time' => $_POST['service_start_time'] ?? '05:00:00',
+                    'service_end_time' => $_POST['service_end_time'] ?? '22:00:00',
+                    'service_frequency_minutes' => $_POST['service_frequency_minutes'] ?? 30,
+                    'trips_per_day' => $_POST['trips_per_day'] ?? 20,
+                    'service_type' => $_POST['service_type'] ?? 'regular',
                     'operating_days' => $_POST['operating_days'] ?? 'daily',
                     'status' => 'active'
                 ];
@@ -69,9 +71,11 @@ try {
                     'route_id' => $_POST['route_id'] ?? '',
                     'operator_id' => $_POST['operator_id'] ?? '',
                     'vehicle_id' => $_POST['vehicle_id'] ?? '',
-                    'departure_time' => $_POST['departure_time'] ?? '',
-                    'arrival_time' => $_POST['arrival_time'] ?? '',
-                    'frequency_minutes' => $_POST['frequency_minutes'] ?? 30,
+                    'service_start_time' => $_POST['service_start_time'] ?? '05:00:00',
+                    'service_end_time' => $_POST['service_end_time'] ?? '22:00:00',
+                    'service_frequency_minutes' => $_POST['service_frequency_minutes'] ?? 30,
+                    'trips_per_day' => $_POST['trips_per_day'] ?? 20,
+                    'service_type' => $_POST['service_type'] ?? 'regular',
                     'operating_days' => $_POST['operating_days'] ?? 'daily'
                 ];
                 
@@ -198,8 +202,9 @@ function getRouteById($db, $route_id) {
 // Schedule Management Functions
 function addSchedule($db, $schedule_data) {
     $query = "INSERT INTO route_schedules (schedule_id, route_id, operator_id, vehicle_id, 
-              departure_time, arrival_time, frequency_minutes, operating_days, status) 
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+              service_start_time, service_end_time, service_frequency_minutes, trips_per_day, 
+              service_type, operating_days, status) 
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     
     $stmt = $db->prepare($query);
     return $stmt->execute([
@@ -207,9 +212,11 @@ function addSchedule($db, $schedule_data) {
         $schedule_data['route_id'],
         $schedule_data['operator_id'],
         $schedule_data['vehicle_id'],
-        $schedule_data['departure_time'],
-        $schedule_data['arrival_time'],
-        $schedule_data['frequency_minutes'],
+        $schedule_data['service_start_time'],
+        $schedule_data['service_end_time'],
+        $schedule_data['service_frequency_minutes'],
+        $schedule_data['trips_per_day'],
+        $schedule_data['service_type'],
         $schedule_data['operating_days'],
         $schedule_data['status']
     ]);
@@ -217,17 +224,19 @@ function addSchedule($db, $schedule_data) {
 
 function updateSchedule($db, $schedule_id, $schedule_data) {
     $query = "UPDATE route_schedules SET route_id = ?, operator_id = ?, vehicle_id = ?, 
-              departure_time = ?, arrival_time = ?, frequency_minutes = ?, operating_days = ? 
-              WHERE schedule_id = ?";
+              service_start_time = ?, service_end_time = ?, service_frequency_minutes = ?, 
+              trips_per_day = ?, service_type = ?, operating_days = ? WHERE schedule_id = ?";
     
     $stmt = $db->prepare($query);
     return $stmt->execute([
         $schedule_data['route_id'],
         $schedule_data['operator_id'],
         $schedule_data['vehicle_id'],
-        $schedule_data['departure_time'],
-        $schedule_data['arrival_time'],
-        $schedule_data['frequency_minutes'],
+        $schedule_data['service_start_time'],
+        $schedule_data['service_end_time'],
+        $schedule_data['service_frequency_minutes'],
+        $schedule_data['trips_per_day'],
+        $schedule_data['service_type'],
         $schedule_data['operating_days'],
         $schedule_id
     ]);
@@ -292,6 +301,12 @@ function generateScheduleId($db) {
     $stmt->execute();
     $next_id = str_pad($stmt->fetch(PDO::FETCH_ASSOC)['next_id'], 3, '0', STR_PAD_LEFT);
     return "SCH-{$year}-{$next_id}";
+}
+
+function publishToCitizenPortal($db, $schedule_id, $published_by) {
+    $query = "UPDATE route_schedules SET published_to_citizen = 1, published_by = ?, published_date = NOW() WHERE schedule_id = ?";
+    $stmt = $db->prepare($query);
+    return $stmt->execute([$published_by, $schedule_id]);
 }
 
 // Export Functions

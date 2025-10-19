@@ -44,6 +44,7 @@ if (!$operator) {
                 <th class="border border-gray-300 px-4 py-2 text-left">Plate Number</th>
                 <th class="border border-gray-300 px-4 py-2 text-left">Type</th>
                 <th class="border border-gray-300 px-4 py-2 text-left">Make/Model</th>
+                <th class="border border-gray-300 px-4 py-2 text-left">Color</th>
                 <th class="border border-gray-300 px-4 py-2 text-left">Year</th>
                 <th class="border border-gray-300 px-4 py-2 text-left">Status</th>
                 <th class="border border-gray-300 px-4 py-2 text-left">Compliance</th>
@@ -52,7 +53,7 @@ if (!$operator) {
         <tbody>
             <?php if (empty($vehicles)): ?>
             <tr>
-                <td colspan="6" class="border border-gray-300 px-4 py-2 text-center text-gray-500">No vehicles registered</td>
+                <td colspan="7" class="border border-gray-300 px-4 py-2 text-center text-gray-500">No vehicles registered</td>
             </tr>
             <?php else: ?>
             <?php foreach ($vehicles as $vehicle): ?>
@@ -60,6 +61,7 @@ if (!$operator) {
                 <td class="border border-gray-300 px-4 py-2"><?php echo $vehicle['plate_number']; ?></td>
                 <td class="border border-gray-300 px-4 py-2"><?php echo ucfirst($vehicle['vehicle_type']); ?></td>
                 <td class="border border-gray-300 px-4 py-2"><?php echo $vehicle['make'] . ' ' . $vehicle['model']; ?></td>
+                <td class="border border-gray-300 px-4 py-2"><?php echo $vehicle['color'] ?? 'N/A'; ?></td>
                 <td class="border border-gray-300 px-4 py-2"><?php echo $vehicle['year_manufactured']; ?></td>
                 <td class="border border-gray-300 px-4 py-2">
                     <span class="px-2 py-1 text-xs rounded-full <?php echo $vehicle['status'] == 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'; ?>">

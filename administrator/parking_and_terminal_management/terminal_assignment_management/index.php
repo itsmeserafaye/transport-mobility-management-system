@@ -207,16 +207,17 @@ function getStatusBadgeClass($status) {
                     </div>
                 </div>
 
-                <!-- Terminal Management Module -->
+                <!-- Parking and Terminal Management Module -->
                 <div class="space-y-1">
-                    <button onclick="toggleDropdown('terminal-mgmt')" class="w-full flex items-center justify-between p-2 rounded-xl transition-all" style="color: #4CAF50; background-color: rgba(76, 175, 80, 0.1);">
+                    <button onclick="toggleDropdown('parking-terminal')" class="w-full flex items-center justify-between p-2 rounded-xl transition-all" style="color: #4CAF50; background-color: rgba(76, 175, 80, 0.1);">
                         <div class="flex items-center">
                             <i data-lucide="map-pin" class="w-5 h-5 mr-3"></i>
-                            <span class="text-sm font-medium">Terminal Management</span>
+                            <span class="text-sm font-medium">Parking and Terminal Management</span>
                         </div>
-                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="terminal-mgmt-icon" style="transform: rotate(180deg);"></i>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="parking-terminal-icon" style="transform: rotate(180deg);"></i>
                     </button>
-                    <div id="terminal-mgmt-menu" class="ml-8 space-y-1">
+                    <div id="parking-terminal-menu" class="ml-8 space-y-1">
+                        <a href="../parking_area_management/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Parking Area Management</a>
                         <a href="../terminal_assignment_management/" class="block p-2 text-sm rounded-lg font-medium" style="color: #4CAF50; background-color: rgba(76, 175, 80, 0.2);">Terminal Assignment</a>
                         <a href="../roster_and_delivery/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Roster & Directory</a>
                         <a href="../public_transparency/" class="block p-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Public Transparency</a>

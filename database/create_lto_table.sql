@@ -1,0 +1,45 @@
+-- Drop old LTO registration table if exists
+DROP TABLE IF EXISTS lto_registrations;
+
+-- Create LTO Registrations Table
+CREATE TABLE lto_registrations (
+    lto_registration_id VARCHAR(20) PRIMARY KEY,
+    owner_first_name VARCHAR(100) NOT NULL,
+    owner_last_name VARCHAR(100) NOT NULL,
+    owner_address TEXT NOT NULL,
+    license_number VARCHAR(20) NOT NULL,
+    license_expiry DATE NOT NULL,
+    make VARCHAR(50) NOT NULL,
+    model VARCHAR(50) NOT NULL,
+    year_model YEAR NOT NULL,
+    engine_number VARCHAR(50) NOT NULL,
+    chassis_number VARCHAR(50) NOT NULL,
+    body_type VARCHAR(50) NOT NULL,
+    plate_number VARCHAR(20),
+    classification ENUM('private', 'commercial', 'government') NOT NULL,
+    or_number VARCHAR(20) NOT NULL,
+    cr_number VARCHAR(15) NOT NULL,
+    registration_type ENUM('new', 'renewal', 'transfer', 'duplicate') NOT NULL,
+    registration_date DATE NOT NULL,
+    expiry_date DATE NOT NULL,
+    lto_office VARCHAR(100) NOT NULL,
+    fees_paid DECIMAL(10,2) DEFAULT 0,
+    insurance_policy VARCHAR(20) NOT NULL,
+    insurance_provider VARCHAR(100) NOT NULL,
+    document_path VARCHAR(255),
+    status ENUM('pending', 'active', 'expired', 'suspended', 'rejected') DEFAULT 'pending',
+    remarks TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    UNIQUE KEY unique_or_number (or_number),
+    UNIQUE KEY unique_cr_number (cr_number),
+    UNIQUE KEY unique_engine_number (engine_number),
+    UNIQUE KEY unique_chassis_number (chassis_number),
+    UNIQUE KEY unique_license_number (license_number),
+    INDEX idx_plate_number (plate_number),
+    INDEX idx_owner_name (owner_first_name, owner_last_name),
+    INDEX idx_license_number (license_number),
+    INDEX idx_expiry_date (expiry_date),
+    INDEX idx_status (status)
+);
