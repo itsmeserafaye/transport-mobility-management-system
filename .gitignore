@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Logs
+*.log
+logs/
+
+# Database
+*.sqlite
+*.db
+
+# Uploads
+uploads/
+upload/
+
+# Config files with sensitive data
+config/database.php
+gsm_login/Login/email_config.php
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.temp
